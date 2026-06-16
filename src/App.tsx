@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { bookings, profiles, rooms } from './data/mockData';
-import type { BookingWithDetails } from './types/booking';
+import { bookings as initialBookings, profiles, rooms } from './data/mockData';
+import type { Booking, BookingWithDetails } from './types/booking';
 import {
   canManageBooking,
   findConflictingBookings,
@@ -10,6 +10,12 @@ import {
 } from './utils/bookingUtils';
 
 type View = 'calendar' | 'bookings' | 'admin';
+
+type AvailabilityResult =
+  | { status: 'idle'; message: string }
+  | { status: 'available'; message: string }
+  | { status: 'conflict'; message: string }
+  | { status: 'invalid'; message: string };
 
 const currentUser = profiles[0];
 const exampleBookingRequest = {
@@ -24,17 +30,35 @@ const views: Array<{ id: View; label: string }> = [
   { id: 'admin', label: 'Admin' },
 ];
 
+const initialAvailabilityResult: AvailabilityResult = {
+  status: 'idle',
+  message: 'Välj datum och rum för att kontrollera tillgänglighet.',
+};
+
 export function App() {
   const [activeView, setActiveView] = useState<View>('calendar');
+  const [bookingList, setBookingList] = useState<Booking[]>(initialBookings);
   const isAdmin = currentUser.role === 'admin';
   const activeRooms = getActiveRooms(rooms);
   const bookingDetails = useMemo(
-    () => getBookingDetails(bookings, profiles, rooms),
-    [],
+    () => getBookingDetails(bookingList, profiles, rooms),
+    [bookingList],
   );
   const confirmedBookingDetails = bookingDetails.filter(
     (booking) => booking.status === 'confirmed',
   );
+
+  function handleCreateBooking(newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) {
+    setBookingList((currentBookings) => [
+      {
+        ...newBooking,
+        id: `booking-${Date.now()}`,
+        userId: currentUser.id,
+        status: 'confirmed',
+      },
+      ...currentBookings,
+    ]);
+  }
 
   return (
     <main className="app-shell">
@@ -75,7 +99,12 @@ export function App() {
         />
       )}
       {activeView === 'bookings' && (
-        <BookingsView bookings={bookingDetails} isAdmin={isAdmin} />
+        <BookingsView
+          bookings={bookingDetails}
+          existingBookings={bookingList}
+          isAdmin={isAdmin}
+          onCreateBooking={handleCreateBooking}
+        />
       )}
       {activeView === 'admin' && isAdmin && (
         <AdminView activeRoomsCount={activeRooms.length} />
@@ -127,7 +156,7 @@ function CalendarView({
             <div>
               <h3>{booking.rooms.map((room) => room.name).join(', ')}</h3>
               <p>
-                {formatDateRange(booking.startDate, booking.endDate)} ·{' '}
+                {formatDateRange(booking.startDate, booking.endDate)} -{' '}
                 {booking.user.displayName}
               </p>
             </div>
@@ -141,12 +170,16 @@ function CalendarView({
 
 function BookingsView({
   bookings,
+  existingBookings,
   isAdmin,
+  onCreateBooking,
 }: {
   bookings: BookingWithDetails[];
+  existingBookings: Booking[];
   isAdmin: boolean;
+  onCreateBooking: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
 }) {
-  const conflicts = findConflictingBookings(exampleBookingRequest, bookings);
+  const conflicts = findConflictingBookings(exampleBookingRequest, existingBookings);
 
   return (
     <section className="content-section">
@@ -154,10 +187,12 @@ function BookingsView({
         <p className="section-label">Bokningar</p>
         <h2>Hantera bokningar</h2>
         <p>
-          Den här vyn använder mockdata och visar hur appen hittar krockar innan
-          en ny bokning sparas.
+          Skapa en lokal testbokning. I nästa större steg kan samma flöde kopplas
+          till en databas.
         </p>
       </div>
+
+      <BookingForm existingBookings={existingBookings} onCreateBooking={onCreateBooking} />
 
       <div className="notice">
         <strong>Test av dubbelbokning</strong>
@@ -178,8 +213,8 @@ function BookingsView({
               <div>
                 <h3>{booking.rooms.map((room) => room.name).join(', ')}</h3>
                 <p>
-                  {formatDateRange(booking.startDate, booking.endDate)} ·{' '}
-                  {booking.user.displayName} · {getStatusLabel(booking)}
+                  {formatDateRange(booking.startDate, booking.endDate)} -{' '}
+                  {booking.user.displayName} - {getStatusLabel(booking)}
                 </p>
               </div>
               {canManage && <button type="button">Redigera</button>}
@@ -188,6 +223,162 @@ function BookingsView({
         })}
       </div>
     </section>
+  );
+}
+
+function BookingForm({
+  existingBookings,
+  onCreateBooking,
+}: {
+  existingBookings: Booking[];
+  onCreateBooking: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
+}) {
+  const [startDate, setStartDate] = useState('2026-07-19');
+  const [endDate, setEndDate] = useState('2026-07-21');
+  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(['room-1']);
+  const [availabilityResult, setAvailabilityResult] = useState<AvailabilityResult>(
+    initialAvailabilityResult,
+  );
+  const activeRooms = getActiveRooms(rooms);
+  const canCreateBooking = availabilityResult.status === 'available';
+
+  function resetAvailabilityResult() {
+    setAvailabilityResult(initialAvailabilityResult);
+  }
+
+  function handleRoomToggle(roomId: string) {
+    resetAvailabilityResult();
+    setSelectedRoomIds((currentRoomIds) => {
+      if (currentRoomIds.includes(roomId)) {
+        return currentRoomIds.filter((currentRoomId) => currentRoomId !== roomId);
+      }
+
+      return [...currentRoomIds, roomId];
+    });
+  }
+
+  function validateBookingRequest(): AvailabilityResult | null {
+    if (!startDate || !endDate) {
+      return { status: 'invalid', message: 'Välj både startdatum och slutdatum.' };
+    }
+
+    if (startDate > endDate) {
+      return {
+        status: 'invalid',
+        message: 'Startdatum kan inte vara efter slutdatum.',
+      };
+    }
+
+    if (selectedRoomIds.length === 0) {
+      return { status: 'invalid', message: 'Välj minst ett rum.' };
+    }
+
+    return null;
+  }
+
+  function handleCheckAvailability() {
+    const validationError = validateBookingRequest();
+
+    if (validationError) {
+      setAvailabilityResult(validationError);
+      return;
+    }
+
+    const conflicts = findConflictingBookings(
+      { roomIds: selectedRoomIds, startDate, endDate },
+      existingBookings,
+    );
+
+    if (conflicts.length > 0) {
+      setAvailabilityResult({
+        status: 'conflict',
+        message: 'Minst ett valt rum är redan bokat under de datumen.',
+      });
+      return;
+    }
+
+    setAvailabilityResult({
+      status: 'available',
+      message: 'Rummen är lediga. Du kan skapa bokningen.',
+    });
+  }
+
+  function handleSubmit() {
+    if (!canCreateBooking) {
+      return;
+    }
+
+    onCreateBooking({
+      roomIds: selectedRoomIds,
+      startDate,
+      endDate,
+    });
+
+    setAvailabilityResult({
+      status: 'idle',
+      message: 'Bokningen skapades. Du kan skapa en till bokning om du vill.',
+    });
+  }
+
+  return (
+    <form className="booking-form" onSubmit={(event) => event.preventDefault()}>
+      <div className="form-grid">
+        <label>
+          Startdatum
+          <input
+            onChange={(event) => {
+              resetAvailabilityResult();
+              setStartDate(event.target.value);
+            }}
+            type="date"
+            value={startDate}
+          />
+        </label>
+
+        <label>
+          Slutdatum
+          <input
+            onChange={(event) => {
+              resetAvailabilityResult();
+              setEndDate(event.target.value);
+            }}
+            type="date"
+            value={endDate}
+          />
+        </label>
+      </div>
+
+      <fieldset>
+        <legend>Välj rum</legend>
+        <div className="room-options">
+          {activeRooms.map((room) => (
+            <label className="room-option" key={room.id}>
+              <input
+                checked={selectedRoomIds.includes(room.id)}
+                onChange={() => handleRoomToggle(room.id)}
+                type="checkbox"
+              />
+              <span>{room.name}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className={`availability-message ${availabilityResult.status}`}>
+        {availabilityResult.message}
+      </div>
+
+      <div className="form-actions">
+        <button onClick={handleCheckAvailability} type="button">
+          Kontrollera tillgänglighet
+        </button>
+        {canCreateBooking && (
+          <button onClick={handleSubmit} type="button">
+            Skapa bokning
+          </button>
+        )}
+      </div>
+    </form>
   );
 }
 

@@ -33,6 +33,33 @@ button:hover {
   background: #1f4945;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input {
+  border: 1px solid #c8d4c5;
+  border-radius: 8px;
+  color: #1d2a2e;
+  font: inherit;
+  padding: 0.75rem;
+  width: 100%;
+}
+
+fieldset {
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  margin: 0;
+  padding: 1rem;
+}
+
+legend {
+  color: #526366;
+  font-weight: 800;
+  padding: 0 0.35rem;
+}
+
 .app-shell {
   width: min(1120px, calc(100% - 2rem));
   margin: 0 auto;
@@ -237,6 +264,84 @@ p {
   margin: 0.35rem 0 0;
 }
 
+.booking-form {
+  background: #f5f7f2;
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid label {
+  color: #526366;
+  display: grid;
+  font-weight: 800;
+  gap: 0.45rem;
+}
+
+.room-options {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.room-option {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.room-option input {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.room-option span {
+  font-weight: 800;
+}
+
+.availability-message {
+  border-radius: 8px;
+  color: #526366;
+  font-weight: 800;
+  padding: 0.85rem 1rem;
+}
+
+.availability-message.idle {
+  background: #ffffff;
+  border: 1px solid #d9e1d7;
+}
+
+.availability-message.available {
+  background: #e8f5e9;
+  border: 1px solid #9ccc9f;
+  color: #28642f;
+}
+
+.availability-message.conflict,
+.availability-message.invalid {
+  background: #fff1f0;
+  border: 1px solid #e6aaa3;
+  color: #963c31;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 @media (max-width: 720px) {
   .topbar,
   .booking-item,
@@ -265,6 +370,11 @@ p {
 
   .summary-grid,
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid,
+  .room-options {
     grid-template-columns: 1fr;
   }
 }
