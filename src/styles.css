@@ -135,6 +135,34 @@ p {
   padding: 1.5rem;
 }
 
+.summary-grid,
+.settings-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summary-grid div,
+.settings-grid div {
+  background: #f5f7f2;
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.summary-grid span,
+.settings-grid span {
+  color: #526366;
+}
+
+.summary-grid strong,
+.settings-grid strong {
+  color: #275d57;
+  font-size: 1.35rem;
+}
+
 .calendar-grid {
   display: grid;
   gap: 0.5rem;
@@ -164,7 +192,15 @@ p {
   gap: 0.75rem;
 }
 
-.booking-item {
+.calendar-list,
+.room-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.booking-item,
+.calendar-booking,
+.room-item {
   align-items: center;
   background: #f5f7f2;
   border: 1px solid #d9e1d7;
@@ -175,36 +211,37 @@ p {
   padding: 1rem;
 }
 
-.booking-item p {
+.booking-item p,
+.calendar-booking p {
   margin-bottom: 0;
 }
 
-.settings-grid {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.calendar-booking span,
+.room-item strong {
+  color: #275d57;
+  font-weight: 800;
 }
 
-.settings-grid div {
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+.notice {
+  background: #fff7ed;
+  border: 1px solid #f0c79f;
   border-radius: 8px;
-  display: grid;
-  gap: 0.5rem;
   padding: 1rem;
 }
 
-.settings-grid span {
-  color: #526366;
+.notice strong {
+  color: #8f3f1d;
 }
 
-.settings-grid strong {
-  color: #275d57;
+.notice p {
+  margin: 0.35rem 0 0;
 }
 
 @media (max-width: 720px) {
   .topbar,
-  .booking-item {
+  .booking-item,
+  .calendar-booking,
+  .room-item {
     align-items: stretch;
     flex-direction: column;
   }
@@ -226,6 +263,7 @@ p {
     padding: 0.35rem;
   }
 
+  .summary-grid,
   .settings-grid {
     grid-template-columns: 1fr;
   }
