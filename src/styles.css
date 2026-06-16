@@ -220,14 +220,16 @@ p {
 }
 
 .calendar-list,
-.room-list {
+.room-list,
+.room-availability-list {
   display: grid;
   gap: 0.75rem;
 }
 
 .booking-item,
 .calendar-booking,
-.room-item {
+.room-item,
+.room-availability {
   align-items: center;
   background: #f5f7f2;
   border: 1px solid #d9e1d7;
@@ -239,14 +241,54 @@ p {
 }
 
 .booking-item p,
-.calendar-booking p {
+.calendar-booking p,
+.room-availability p {
   margin-bottom: 0;
 }
 
 .calendar-booking span,
-.room-item strong {
+.room-item strong,
+.room-availability span {
   color: #275d57;
   font-weight: 800;
+}
+
+.availability-panel {
+  background: #f5f7f2;
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.room-availability {
+  background: #ffffff;
+}
+
+.room-availability.available {
+  border-color: #9ccc9f;
+}
+
+.room-availability.available span {
+  color: #28642f;
+}
+
+.room-availability.occupied {
+  border-color: #e6aaa3;
+}
+
+.room-availability.occupied span {
+  color: #963c31;
+}
+
+.room-availability.inactive {
+  border-color: #c8d4c5;
+  opacity: 0.75;
+}
+
+.room-availability.inactive span {
+  color: #526366;
 }
 
 .notice {
@@ -346,7 +388,8 @@ p {
   .topbar,
   .booking-item,
   .calendar-booking,
-  .room-item {
+  .room-item,
+  .room-availability {
     align-items: stretch;
     flex-direction: column;
   }

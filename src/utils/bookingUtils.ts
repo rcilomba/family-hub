@@ -59,6 +59,19 @@ export function findConflictingBookings(
   });
 }
 
+export function findRoomConflictingBookings(
+  roomId: string,
+  existingBookings: Booking[],
+  startDate: string,
+  endDate: string,
+) {
+  return getConfirmedBookings(existingBookings).filter(
+    (booking) =>
+      booking.roomIds.includes(roomId) &&
+      datesOverlap(booking.startDate, booking.endDate, startDate, endDate),
+  );
+}
+
 export function getAvailableRooms(
   rooms: Room[],
   bookings: Booking[],

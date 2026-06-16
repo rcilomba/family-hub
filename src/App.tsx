@@ -48,7 +48,9 @@ export function App() {
     (booking) => booking.status === 'confirmed',
   );
 
-  function handleCreateBooking(newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) {
+  function handleCreateBooking(
+    newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
+  ) {
     setBookingList((currentBookings) => [
       {
         ...newBooking,
@@ -61,19 +63,19 @@ export function App() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
+    <main className='app-shell'>
+      <header className='topbar'>
         <div>
-          <p className="eyebrow">Family Hub</p>
+          <p className='eyebrow'>Family Hub</p>
           <h1>Sommarhusets bokningar</h1>
         </div>
-        <div className="user-pill" aria-label="Inloggad användare">
+        <div className='user-pill' aria-label='Inloggad användare'>
           <span>{currentUser.displayName}</span>
           <small>{isAdmin ? 'Admin' : 'Medlem'}</small>
         </div>
       </header>
 
-      <nav className="tabs" aria-label="Huvudnavigation">
+      <nav className='tabs' aria-label='Huvudnavigation'>
         {views.map((view) => {
           if (view.id === 'admin' && !isAdmin) {
             return null;
@@ -84,7 +86,7 @@ export function App() {
               className={activeView === view.id ? 'tab active' : 'tab'}
               key={view.id}
               onClick={() => setActiveView(view.id)}
-              type="button"
+              type='button'
             >
               {view.label}
             </button>
@@ -128,9 +130,9 @@ function CalendarView({
   );
 
   return (
-    <section className="content-section">
+    <section className='content-section'>
       <div>
-        <p className="section-label">Översikt</p>
+        <p className='section-label'>Översikt</p>
         <h2>Kalender</h2>
         <p>
           Här ser familjen bekräftade bokningar, bokade rum och vem som har
@@ -138,21 +140,21 @@ function CalendarView({
         </p>
       </div>
 
-      <div className="summary-grid">
-        <SummaryStat label="Aktiva rum" value={activeRoomsCount.toString()} />
+      <div className='summary-grid'>
+        <SummaryStat label='Aktiva rum' value={activeRoomsCount.toString()} />
         <SummaryStat
-          label="Bekräftade bokningar"
+          label='Bekräftade bokningar'
           value={bookings.length.toString()}
         />
         <SummaryStat
-          label="Lediga rum 14-15 juli"
+          label='Lediga rum 14-15 juli'
           value={availableRooms.length.toString()}
         />
       </div>
 
-      <div className="calendar-list" aria-label="Bekräftade bokningar">
+      <div className='calendar-list' aria-label='Bekräftade bokningar'>
         {bookings.map((booking) => (
-          <article className="calendar-booking" key={booking.id}>
+          <article className='calendar-booking' key={booking.id}>
             <div>
               <h3>{booking.rooms.map((room) => room.name).join(', ')}</h3>
               <p>
@@ -177,24 +179,32 @@ function BookingsView({
   bookings: BookingWithDetails[];
   existingBookings: Booking[];
   isAdmin: boolean;
-  onCreateBooking: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
+  onCreateBooking: (
+    newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
+  ) => void;
 }) {
-  const conflicts = findConflictingBookings(exampleBookingRequest, existingBookings);
+  const conflicts = findConflictingBookings(
+    exampleBookingRequest,
+    existingBookings,
+  );
 
   return (
-    <section className="content-section">
+    <section className='content-section'>
       <div>
-        <p className="section-label">Bokningar</p>
+        <p className='section-label'>Bokningar</p>
         <h2>Hantera bokningar</h2>
         <p>
-          Skapa en lokal testbokning. I nästa större steg kan samma flöde kopplas
-          till en databas.
+          Skapa en lokal testbokning. I nästa större steg kan samma flöde
+          kopplas till en databas.
         </p>
       </div>
 
-      <BookingForm existingBookings={existingBookings} onCreateBooking={onCreateBooking} />
+      <BookingForm
+        existingBookings={existingBookings}
+        onCreateBooking={onCreateBooking}
+      />
 
-      <div className="notice">
+      <div className='notice'>
         <strong>Test av dubbelbokning</strong>
         <p>
           Försök: Rum 1, 14 juli till 15 juli. Resultat:{' '}
@@ -204,12 +214,12 @@ function BookingsView({
         </p>
       </div>
 
-      <div className="booking-list">
+      <div className='booking-list'>
         {bookings.map((booking) => {
           const canManage = isAdmin || canManageBooking(currentUser, booking);
 
           return (
-            <article className="booking-item" key={booking.id}>
+            <article className='booking-item' key={booking.id}>
               <div>
                 <h3>{booking.rooms.map((room) => room.name).join(', ')}</h3>
                 <p>
@@ -217,7 +227,7 @@ function BookingsView({
                   {booking.user.displayName} - {getStatusLabel(booking)}
                 </p>
               </div>
-              {canManage && <button type="button">Redigera</button>}
+              {canManage && <button type='button'>Redigera</button>}
             </article>
           );
         })}
@@ -231,14 +241,15 @@ function BookingForm({
   onCreateBooking,
 }: {
   existingBookings: Booking[];
-  onCreateBooking: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
+  onCreateBooking: (
+    newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
+  ) => void;
 }) {
   const [startDate, setStartDate] = useState('2026-07-19');
   const [endDate, setEndDate] = useState('2026-07-21');
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(['room-1']);
-  const [availabilityResult, setAvailabilityResult] = useState<AvailabilityResult>(
-    initialAvailabilityResult,
-  );
+  const [availabilityResult, setAvailabilityResult] =
+    useState<AvailabilityResult>(initialAvailabilityResult);
   const activeRooms = getActiveRooms(rooms);
   const canCreateBooking = availabilityResult.status === 'available';
 
@@ -250,7 +261,9 @@ function BookingForm({
     resetAvailabilityResult();
     setSelectedRoomIds((currentRoomIds) => {
       if (currentRoomIds.includes(roomId)) {
-        return currentRoomIds.filter((currentRoomId) => currentRoomId !== roomId);
+        return currentRoomIds.filter(
+          (currentRoomId) => currentRoomId !== roomId,
+        );
       }
 
       return [...currentRoomIds, roomId];
@@ -259,7 +272,10 @@ function BookingForm({
 
   function validateBookingRequest(): AvailabilityResult | null {
     if (!startDate || !endDate) {
-      return { status: 'invalid', message: 'Välj både startdatum och slutdatum.' };
+      return {
+        status: 'invalid',
+        message: 'Välj både startdatum och slutdatum.',
+      };
     }
 
     if (startDate > endDate) {
@@ -321,8 +337,8 @@ function BookingForm({
   }
 
   return (
-    <form className="booking-form" onSubmit={(event) => event.preventDefault()}>
-      <div className="form-grid">
+    <form className='booking-form' onSubmit={(event) => event.preventDefault()}>
+      <div className='form-grid'>
         <label>
           Startdatum
           <input
@@ -330,7 +346,7 @@ function BookingForm({
               resetAvailabilityResult();
               setStartDate(event.target.value);
             }}
-            type="date"
+            type='date'
             value={startDate}
           />
         </label>
@@ -342,7 +358,7 @@ function BookingForm({
               resetAvailabilityResult();
               setEndDate(event.target.value);
             }}
-            type="date"
+            type='date'
             value={endDate}
           />
         </label>
@@ -350,13 +366,13 @@ function BookingForm({
 
       <fieldset>
         <legend>Välj rum</legend>
-        <div className="room-options">
+        <div className='room-options'>
           {activeRooms.map((room) => (
-            <label className="room-option" key={room.id}>
+            <label className='room-option' key={room.id}>
               <input
                 checked={selectedRoomIds.includes(room.id)}
                 onChange={() => handleRoomToggle(room.id)}
-                type="checkbox"
+                type='checkbox'
               />
               <span>{room.name}</span>
             </label>
@@ -368,12 +384,12 @@ function BookingForm({
         {availabilityResult.message}
       </div>
 
-      <div className="form-actions">
-        <button onClick={handleCheckAvailability} type="button">
+      <div className='form-actions'>
+        <button onClick={handleCheckAvailability} type='button'>
           Kontrollera tillgänglighet
         </button>
         {canCreateBooking && (
-          <button onClick={handleSubmit} type="button">
+          <button onClick={handleSubmit} type='button'>
             Skapa bokning
           </button>
         )}
@@ -384,9 +400,9 @@ function BookingForm({
 
 function AdminView({ activeRoomsCount }: { activeRoomsCount: number }) {
   return (
-    <section className="content-section">
+    <section className='content-section'>
       <div>
-        <p className="section-label">Admin</p>
+        <p className='section-label'>Admin</p>
         <h2>Boendets inställningar</h2>
         <p>
           Endast Ramadan/admin ska kunna ändra rum, regler och andra
@@ -394,15 +410,15 @@ function AdminView({ activeRoomsCount }: { activeRoomsCount: number }) {
         </p>
       </div>
 
-      <div className="settings-grid">
-        <SummaryStat label="Totalt antal rum" value={rooms.length.toString()} />
-        <SummaryStat label="Aktiva rum" value={activeRoomsCount.toString()} />
-        <SummaryStat label="Bokningstyp" value="Per rum" />
+      <div className='settings-grid'>
+        <SummaryStat label='Totalt antal rum' value={rooms.length.toString()} />
+        <SummaryStat label='Aktiva rum' value={activeRoomsCount.toString()} />
+        <SummaryStat label='Bokningstyp' value='Per rum' />
       </div>
 
-      <div className="room-list">
+      <div className='room-list'>
         {rooms.map((room) => (
-          <article className="room-item" key={room.id}>
+          <article className='room-item' key={room.id}>
             <span>{room.name}</span>
             <strong>{room.isActive ? 'Aktivt' : 'Inaktivt'}</strong>
           </article>
