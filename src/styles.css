@@ -33,6 +33,16 @@ button:hover {
   background: #1f4945;
 }
 
+.secondary-button {
+  background: #ffffff;
+  border: 1px solid #c8d4c5;
+  color: #275d57;
+}
+
+.secondary-button:hover {
+  background: #eef3e8;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -321,6 +331,17 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.form-heading {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.form-heading h3 {
+  margin-bottom: 0;
+}
+
 .form-grid label {
   color: #526366;
   display: grid;
@@ -384,6 +405,13 @@ p {
   gap: 0.75rem;
 }
 
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
 @media (max-width: 720px) {
   .topbar,
   .booking-item,
@@ -419,5 +447,11 @@ p {
   .form-grid,
   .room-options {
     grid-template-columns: 1fr;
+  }
+
+  .form-heading,
+  .item-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
