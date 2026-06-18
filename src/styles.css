@@ -325,6 +325,40 @@ p {
   padding: 1rem;
 }
 
+.admin-room-form {
+  align-items: end;
+  background: #f5f7f2;
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr auto;
+  padding: 1rem;
+}
+
+.admin-room-form label,
+.room-admin-item label {
+  color: #526366;
+  display: grid;
+  font-weight: 800;
+  gap: 0.45rem;
+}
+
+.room-admin-item {
+  align-items: center;
+  background: #f5f7f2;
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr auto;
+  padding: 1rem;
+}
+
+.room-admin-item strong {
+  color: #275d57;
+}
+
 .form-grid {
   display: grid;
   gap: 1rem;
@@ -446,6 +480,12 @@ p {
 
   .form-grid,
   .room-options {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-room-form,
+  .room-admin-item {
+    align-items: stretch;
     grid-template-columns: 1fr;
   }
 

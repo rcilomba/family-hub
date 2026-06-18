@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
-import { bookings as initialBookings, profiles, rooms } from './data/mockData';
+import {
+  bookings as initialBookings,
+  profiles,
+  rooms as initialRooms,
+} from './data/mockData';
 import type { Booking, BookingWithDetails, Room } from './types/booking';
 import {
   canManageBooking,
@@ -43,11 +47,12 @@ const initialAvailabilityResult: AvailabilityResult = {
 export function App() {
   const [activeView, setActiveView] = useState<View>('calendar');
   const [bookingList, setBookingList] = useState<Booking[]>(initialBookings);
+  const [roomList, setRoomList] = useState<Room[]>(initialRooms);
   const isAdmin = currentUser.role === 'admin';
-  const activeRooms = getActiveRooms(rooms);
+  const activeRooms = getActiveRooms(roomList);
   const bookingDetails = useMemo(
-    () => getBookingDetails(bookingList, profiles, rooms),
-    [bookingList],
+    () => getBookingDetails(bookingList, profiles, roomList),
+    [bookingList, roomList],
   );
   const confirmedBookingDetails = bookingDetails.filter(
     (booking) => booking.status === 'confirmed',
@@ -77,6 +82,31 @@ export function App() {
     setBookingList((currentBookings) =>
       currentBookings.map((booking) =>
         booking.id === bookingId ? { ...booking, status: 'cancelled' } : booking,
+      ),
+    );
+  }
+
+  function handleAddRoom(roomName: string) {
+    setRoomList((currentRooms) => [
+      ...currentRooms,
+      {
+        id: `room-${Date.now()}`,
+        name: roomName,
+        isActive: true,
+      },
+    ]);
+  }
+
+  function handleRenameRoom(roomId: string, name: string) {
+    setRoomList((currentRooms) =>
+      currentRooms.map((room) => (room.id === roomId ? { ...room, name } : room)),
+    );
+  }
+
+  function handleToggleRoom(roomId: string) {
+    setRoomList((currentRooms) =>
+      currentRooms.map((room) =>
+        room.id === roomId ? { ...room, isActive: !room.isActive } : room,
       ),
     );
   }
@@ -118,6 +148,7 @@ export function App() {
           activeRoomsCount={activeRooms.length}
           bookings={confirmedBookingDetails}
           existingBookings={bookingList}
+          roomList={roomList}
         />
       )}
       {activeView === 'bookings' && (
@@ -128,10 +159,17 @@ export function App() {
           onCancelBooking={handleCancelBooking}
           onCreateBooking={handleCreateBooking}
           onUpdateBooking={handleUpdateBooking}
+          roomList={roomList}
         />
       )}
       {activeView === 'admin' && isAdmin && (
-        <AdminView activeRoomsCount={activeRooms.length} />
+        <AdminView
+          activeRoomsCount={activeRooms.length}
+          onAddRoom={handleAddRoom}
+          onRenameRoom={handleRenameRoom}
+          onToggleRoom={handleToggleRoom}
+          roomList={roomList}
+        />
       )}
     </main>
   );
@@ -141,14 +179,21 @@ function CalendarView({
   activeRoomsCount,
   bookings,
   existingBookings,
+  roomList,
 }: {
   activeRoomsCount: number;
   bookings: BookingWithDetails[];
   existingBookings: Booking[];
+  roomList: Room[];
 }) {
   const [startDate, setStartDate] = useState('2026-07-14');
   const [endDate, setEndDate] = useState('2026-07-15');
-  const availableRooms = getAvailableRooms(rooms, existingBookings, startDate, endDate);
+  const availableRooms = getAvailableRooms(
+    roomList,
+    existingBookings,
+    startDate,
+    endDate,
+  );
 
   return (
     <section className="content-section">
@@ -199,12 +244,13 @@ function CalendarView({
         </div>
 
         <div className="room-availability-list">
-          {rooms.map((room) => (
+          {roomList.map((room) => (
             <RoomAvailabilityItem
               endDate={endDate}
               existingBookings={existingBookings}
               key={room.id}
               room={room}
+              roomList={roomList}
               startDate={startDate}
             />
           ))}
@@ -224,11 +270,13 @@ function RoomAvailabilityItem({
   endDate,
   existingBookings,
   room,
+  roomList,
   startDate,
 }: {
   endDate: string;
   existingBookings: Booking[];
   room: Room;
+  roomList: Room[];
   startDate: string;
 }) {
   const conflicts = findRoomConflictingBookings(
@@ -237,7 +285,7 @@ function RoomAvailabilityItem({
     startDate,
     endDate,
   );
-  const conflictingDetails = getBookingDetails(conflicts, profiles, rooms);
+  const conflictingDetails = getBookingDetails(conflicts, profiles, roomList);
 
   if (!room.isActive) {
     return (
@@ -285,6 +333,7 @@ function BookingsView({
   onCancelBooking,
   onCreateBooking,
   onUpdateBooking,
+  roomList,
 }: {
   bookings: BookingWithDetails[];
   existingBookings: Booking[];
@@ -292,6 +341,7 @@ function BookingsView({
   onCancelBooking: (bookingId: string) => void;
   onCreateBooking: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
   onUpdateBooking: (updatedBooking: Booking) => void;
+  roomList: Room[];
 }) {
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const conflicts = findConflictingBookings(exampleBookingRequest, existingBookings);
@@ -327,12 +377,14 @@ function BookingsView({
           mode={{ type: 'edit', booking: editingBooking }}
           onCancelEdit={handleCancelEdit}
           onUpdateBooking={handleSaveEdit}
+          roomList={roomList}
         />
       ) : (
         <BookingForm
           existingBookings={existingBookings}
           mode={{ type: 'create' }}
           onCreateBooking={onCreateBooking}
+          roomList={roomList}
         />
       )}
 
@@ -386,12 +438,14 @@ function BookingForm({
   onCancelEdit,
   onCreateBooking,
   onUpdateBooking,
+  roomList,
 }: {
   existingBookings: Booking[];
   mode: BookingFormMode;
   onCancelEdit?: () => void;
   onCreateBooking?: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
   onUpdateBooking?: (updatedBooking: Booking) => void;
+  roomList: Room[];
 }) {
   const isEditMode = mode.type === 'edit';
   const initialBooking = isEditMode ? mode.booking : null;
@@ -402,7 +456,7 @@ function BookingForm({
   );
   const [availabilityResult, setAvailabilityResult] =
     useState<AvailabilityResult>(initialAvailabilityResult);
-  const activeRooms = getActiveRooms(rooms);
+  const roomOptions = getRoomOptions(roomList, selectedRoomIds);
   const canSaveBooking = availabilityResult.status === 'available';
   const title = isEditMode ? 'Redigera bokning' : 'Skapa bokning';
 
@@ -545,10 +599,11 @@ function BookingForm({
       <fieldset>
         <legend>Välj rum</legend>
         <div className="room-options">
-          {activeRooms.map((room) => (
+          {roomOptions.map((room) => (
             <label className="room-option" key={room.id}>
               <input
                 checked={selectedRoomIds.includes(room.id)}
+                disabled={!room.isActive}
                 onChange={() => handleRoomToggle(room.id)}
                 type="checkbox"
               />
@@ -576,29 +631,81 @@ function BookingForm({
   );
 }
 
-function AdminView({ activeRoomsCount }: { activeRoomsCount: number }) {
+function AdminView({
+  activeRoomsCount,
+  onAddRoom,
+  onRenameRoom,
+  onToggleRoom,
+  roomList,
+}: {
+  activeRoomsCount: number;
+  onAddRoom: (roomName: string) => void;
+  onRenameRoom: (roomId: string, name: string) => void;
+  onToggleRoom: (roomId: string) => void;
+  roomList: Room[];
+}) {
+  const [newRoomName, setNewRoomName] = useState('');
+  const trimmedRoomName = newRoomName.trim();
+
+  function handleSubmit() {
+    if (!trimmedRoomName) {
+      return;
+    }
+
+    onAddRoom(trimmedRoomName);
+    setNewRoomName('');
+  }
+
   return (
     <section className="content-section">
       <div>
         <p className="section-label">Admin</p>
         <h2>Boendets inställningar</h2>
         <p>
-          Endast Ramadan/admin ska kunna ändra rum, regler och andra
-          inställningar.
+          Endast Ramadan/admin kan ändra rum, regler och andra inställningar.
         </p>
       </div>
 
       <div className="settings-grid">
-        <SummaryStat label="Totalt antal rum" value={rooms.length.toString()} />
+        <SummaryStat label="Totalt antal rum" value={roomList.length.toString()} />
         <SummaryStat label="Aktiva rum" value={activeRoomsCount.toString()} />
         <SummaryStat label="Bokningstyp" value="Per rum" />
       </div>
 
+      <form className="admin-room-form" onSubmit={(event) => event.preventDefault()}>
+        <label>
+          Nytt rum
+          <input
+            onChange={(event) => setNewRoomName(event.target.value)}
+            placeholder="Exempel: Gästrum"
+            value={newRoomName}
+          />
+        </label>
+        <button disabled={!trimmedRoomName} onClick={handleSubmit} type="button">
+          Lägg till rum
+        </button>
+      </form>
+
       <div className="room-list">
-        {rooms.map((room) => (
-          <article className="room-item" key={room.id}>
-            <span>{room.name}</span>
-            <strong>{room.isActive ? 'Aktivt' : 'Inaktivt'}</strong>
+        {roomList.map((room) => (
+          <article className="room-admin-item" key={room.id}>
+            <label>
+              Rumsnamn
+              <input
+                onChange={(event) => onRenameRoom(room.id, event.target.value)}
+                value={room.name}
+              />
+            </label>
+            <div className="item-actions">
+              <strong>{room.isActive ? 'Aktivt' : 'Inaktivt'}</strong>
+              <button
+                className="secondary-button"
+                onClick={() => onToggleRoom(room.id)}
+                type="button"
+              >
+                {room.isActive ? 'Inaktivera' : 'Aktivera'}
+              </button>
+            </div>
           </article>
         ))}
       </div>
@@ -638,6 +745,12 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
 
 function formatDateRange(startDate: string, endDate: string) {
   return `${startDate} till ${endDate}`;
+}
+
+function getRoomOptions(roomList: Room[], selectedRoomIds: string[]) {
+  return roomList.filter(
+    (room) => room.isActive || selectedRoomIds.includes(room.id),
+  );
 }
 
 function getStatusLabel(booking: BookingWithDetails) {
