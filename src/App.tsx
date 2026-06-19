@@ -47,6 +47,8 @@ const views: Array<{ id: View; label: string }> = [
   { id: 'admin', label: 'Admin' },
 ];
 
+const weekdays = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'];
+
 const initialAvailabilityResult: AvailabilityResult = {
   status: 'idle',
   message: 'Välj datum och rum för att kontrollera tillgänglighet.',
@@ -403,14 +405,47 @@ function CalendarView({
   roomList: Room[];
   roomStatus: AsyncStatus;
 }) {
-  const [startDate, setStartDate] = useState('2026-07-14');
-  const [endDate, setEndDate] = useState('2026-07-15');
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    getMonthKey(bookings[0]?.startDate ?? getTodayDateString()),
+  );
+  const [selectedDate, setSelectedDate] = useState(
+    bookings[0]?.startDate ?? getTodayDateString(),
+  );
+  const [startDate, setStartDate] = useState(selectedDate);
+  const [endDate, setEndDate] = useState(selectedDate);
+  const calendarDays = getMonthCalendarDays(visibleMonth);
+  const selectedDateBookings = bookings.filter((booking) =>
+    bookingIncludesDate(booking, selectedDate),
+  );
+  const selectedDateAvailableRooms = getAvailableRooms(
+    roomList,
+    existingBookings,
+    selectedDate,
+    selectedDate,
+  );
   const availableRooms = getAvailableRooms(
     roomList,
     existingBookings,
     startDate,
     endDate,
   );
+
+  useEffect(() => {
+    if (bookings.length === 0) {
+      return;
+    }
+
+    setVisibleMonth(getMonthKey(bookings[0].startDate));
+    setSelectedDate(bookings[0].startDate);
+    setStartDate(bookings[0].startDate);
+    setEndDate(bookings[0].startDate);
+  }, [bookings.length]);
+
+  function handleSelectDate(date: string) {
+    setSelectedDate(date);
+    setStartDate(date);
+    setEndDate(date);
+  }
 
   return (
     <section className="content-section">
@@ -433,6 +468,97 @@ function CalendarView({
           label="Lediga rum för valda datum"
           value={availableRooms.length.toString()}
         />
+      </div>
+
+      <div className="month-calendar">
+        <div className="month-calendar-header">
+          <button
+            className="secondary-button"
+            onClick={() => setVisibleMonth(getAdjacentMonthKey(visibleMonth, -1))}
+            type="button"
+          >
+            Föregående
+          </button>
+          <div>
+            <p className="section-label">Månadsvy</p>
+            <h3>{formatMonthLabel(visibleMonth)}</h3>
+          </div>
+          <button
+            className="secondary-button"
+            onClick={() => setVisibleMonth(getAdjacentMonthKey(visibleMonth, 1))}
+            type="button"
+          >
+            Nästa
+          </button>
+        </div>
+
+        <div className="calendar-grid" aria-label="Månadskalender">
+          {weekdays.map((weekday) => (
+            <strong key={weekday}>{weekday}</strong>
+          ))}
+          {calendarDays.map((day) => {
+            const dayBookings = bookings.filter((booking) =>
+              bookingIncludesDate(booking, day.date),
+            );
+            const isSelected = day.date === selectedDate;
+            const isBooked = dayBookings.length > 0;
+
+            return (
+              <button
+                aria-label={`${formatDate(day.date)} har ${dayBookings.length} bokningar`}
+                className={[
+                  'day-cell',
+                  day.isCurrentMonth ? '' : 'outside-month',
+                  isSelected ? 'selected' : '',
+                  isBooked ? 'booked' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                key={day.date}
+                onClick={() => handleSelectDate(day.date)}
+                type="button"
+              >
+                <span>{day.dayNumber}</span>
+                {isBooked && <small>{dayBookings.length}</small>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="selected-day-panel">
+        <div>
+          <p className="section-label">Vald dag</p>
+          <h3>{formatDate(selectedDate)}</h3>
+          <p>
+            {selectedDateAvailableRooms.length} av {activeRoomsCount} aktiva rum
+            är lediga den här dagen.
+          </p>
+        </div>
+
+        <div className="room-availability-list">
+          {roomList.map((room) => (
+            <RoomAvailabilityItem
+              endDate={selectedDate}
+              existingBookings={existingBookings}
+              key={room.id}
+              profiles={profiles}
+              room={room}
+              roomList={roomList}
+              startDate={selectedDate}
+            />
+          ))}
+        </div>
+
+        <div className="calendar-list" aria-label="Bokningar för vald dag">
+          <BookingStatusMessage
+            bookingList={selectedDateBookings}
+            bookingStatus={bookingStatus}
+          />
+          {selectedDateBookings.map((booking) => (
+            <BookingSummaryCard booking={booking} key={booking.id} />
+          ))}
+        </div>
       </div>
 
       <div className="availability-panel">
@@ -1089,6 +1215,75 @@ function BookingStatusMessage({
   }
 
   return null;
+}
+
+function getTodayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getMonthKey(date: string) {
+  return date.slice(0, 7);
+}
+
+function getAdjacentMonthKey(monthKey: string, offset: number) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const date = new Date(year, month - 1 + offset, 1);
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getMonthCalendarDays(monthKey: string) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const firstDayOfMonth = new Date(year, month - 1, 1);
+  const mondayBasedStartOffset = (firstDayOfMonth.getDay() + 6) % 7;
+  const firstCalendarDate = new Date(year, month - 1, 1 - mondayBasedStartOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstCalendarDate);
+    date.setDate(firstCalendarDate.getDate() + index);
+    const dateString = toDateString(date);
+
+    return {
+      date: dateString,
+      dayNumber: date.getDate(),
+      isCurrentMonth: getMonthKey(dateString) === monthKey,
+    };
+  });
+}
+
+function toDateString(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function bookingIncludesDate(booking: BookingWithDetails, date: string) {
+  return booking.startDate <= date && booking.endDate >= date;
+}
+
+function formatMonthLabel(monthKey: string) {
+  const [year, month] = monthKey.split('-').map(Number);
+
+  return new Intl.DateTimeFormat('sv-SE', {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, 1));
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(parseDateString(date));
+}
+
+function parseDateString(date: string) {
+  const [year, month, day] = date.split('-').map(Number);
+
+  return new Date(year, month - 1, day);
 }
 
 function formatDateRange(startDate: string, endDate: string) {
