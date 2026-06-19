@@ -1,0 +1,84 @@
+import { useState } from 'react';
+import { hasSupabaseConfig, supabase } from '../lib/supabase';
+
+type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';
+
+export function AuthForm() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<SubmitStatus>('idle');
+  const [message, setMessage] = useState(
+    'Logga in med din e-post. Supabase skickar en säker login-länk.',
+  );
+  const trimmedEmail = email.trim();
+
+  async function handleSubmit() {
+    if (!supabase || !trimmedEmail) {
+      return;
+    }
+
+    setStatus('loading');
+    setMessage('Skickar login-länk...');
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmedEmail,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      setStatus('error');
+      setMessage('Login-länken kunde inte skickas. Kontrollera e-postadressen.');
+      return;
+    }
+
+    setStatus('success');
+    setMessage('Kolla din e-post och öppna login-länken för att fortsätta.');
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-card">
+        <div>
+          <p className="eyebrow">Family Hub</p>
+          <h1>Logga in</h1>
+          <p>
+            Använd din e-postadress för att komma åt sommarhusets bokningar.
+          </p>
+        </div>
+
+        {!hasSupabaseConfig ? (
+          <div className="availability-message invalid">
+            Lägg till VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY i .env.local
+            innan login kan användas.
+          </div>
+        ) : (
+          <form className="booking-form" onSubmit={(event) => event.preventDefault()}>
+            <label>
+              E-post
+              <input
+                autoComplete="email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="namn@example.com"
+                type="email"
+                value={email}
+              />
+            </label>
+
+            <div className={`availability-message ${status}`}>
+              {message}
+            </div>
+
+            <button
+              disabled={!trimmedEmail || status === 'loading'}
+              onClick={handleSubmit}
+              type="button"
+            >
+              Skicka login-länk
+            </button>
+          </form>
+        )}
+      </section>
+    </main>
+  );
+}

@@ -39,6 +39,13 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 `.env.local` is ignored by git and should not be committed.
 
+For local magic-link login, set these URLs in Supabase Auth settings:
+
+```bash
+Site URL: http://localhost:5173
+Redirect URL: http://localhost:5173
+```
+
 ## Database schema
 
 The first Supabase schema is in:

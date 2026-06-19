@@ -43,6 +43,18 @@ button:hover {
   background: #eef3e8;
 }
 
+.link-button {
+  background: transparent;
+  color: #275d57;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  background: transparent;
+  color: #1f4945;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -74,6 +86,30 @@ legend {
   width: min(1120px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 2rem 0;
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  padding: 1rem;
+  place-items: center;
+}
+
+.auth-card {
+  background: #ffffff;
+  border: 1px solid #d9e1d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 1.5rem;
+  max-width: 520px;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.auth-error {
+  color: #963c31;
+  font-weight: 800;
+  text-align: center;
 }
 
 .topbar {
@@ -325,6 +361,13 @@ p {
   padding: 1rem;
 }
 
+.booking-form > label {
+  color: #526366;
+  display: grid;
+  font-weight: 800;
+  gap: 0.45rem;
+}
+
 .admin-room-form {
   align-items: end;
   background: #f5f7f2;
@@ -426,8 +469,20 @@ p {
   color: #28642f;
 }
 
+.availability-message.success {
+  background: #e8f5e9;
+  border: 1px solid #9ccc9f;
+  color: #28642f;
+}
+
+.availability-message.loading {
+  background: #ffffff;
+  border: 1px solid #d9e1d7;
+}
+
 .availability-message.conflict,
-.availability-message.invalid {
+.availability-message.invalid,
+.availability-message.error {
   background: #fff1f0;
   border: 1px solid #e6aaa3;
   color: #963c31;

@@ -1,10 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { AuthForm } from './components/AuthForm';
+import { bookings as initialBookings, profiles } from './data/mockData';
+import { useAuth } from './hooks/useAuth';
 import {
-  bookings as initialBookings,
-  profiles,
-  rooms as initialRooms,
-} from './data/mockData';
-import type { Booking, BookingWithDetails, Room } from './types/booking';
+  createRoom,
+  fetchRooms,
+  updateRoomName,
+  updateRoomStatus,
+} from './services/rooms';
+import type { Booking, BookingWithDetails, Profile, Room } from './types/booking';
 import {
   canManageBooking,
   findConflictingBookings,
@@ -26,7 +30,11 @@ type BookingFormMode =
   | { type: 'create' }
   | { type: 'edit'; booking: BookingWithDetails };
 
-const currentUser = profiles[0];
+type AsyncStatus = {
+  isLoading: boolean;
+  errorMessage: string | null;
+};
+
 const exampleBookingRequest = {
   roomIds: ['room-1'],
   startDate: '2026-07-14',
@@ -45,25 +53,100 @@ const initialAvailabilityResult: AvailabilityResult = {
 };
 
 export function App() {
+  const auth = useAuth();
   const [activeView, setActiveView] = useState<View>('calendar');
   const [bookingList, setBookingList] = useState<Booking[]>(initialBookings);
-  const [roomList, setRoomList] = useState<Room[]>(initialRooms);
-  const isAdmin = currentUser.role === 'admin';
+  const [roomList, setRoomList] = useState<Room[]>([]);
+  const [roomStatus, setRoomStatus] = useState<AsyncStatus>({
+    isLoading: false,
+    errorMessage: null,
+  });
+  const currentUser = auth.profile;
+  const appProfiles = useMemo(() => {
+    if (!currentUser || profiles.some((profile) => profile.id === currentUser.id)) {
+      return profiles;
+    }
+
+    return [currentUser, ...profiles];
+  }, [currentUser]);
+  const isAdmin = currentUser?.role === 'admin';
   const activeRooms = getActiveRooms(roomList);
   const bookingDetails = useMemo(
-    () => getBookingDetails(bookingList, profiles, roomList),
-    [bookingList, roomList],
+    () => getBookingDetails(bookingList, appProfiles, roomList),
+    [appProfiles, bookingList, roomList],
   );
   const confirmedBookingDetails = bookingDetails.filter(
     (booking) => booking.status === 'confirmed',
   );
+
+  useEffect(() => {
+    if (!currentUser) {
+      setRoomList([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadRooms() {
+      setRoomStatus({ isLoading: true, errorMessage: null });
+
+      try {
+        const rooms = await fetchRooms();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setRoomList(rooms);
+        setRoomStatus({ isLoading: false, errorMessage: null });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setRoomStatus({
+          isLoading: false,
+          errorMessage: 'Kunde inte hämta rum från Supabase.',
+        });
+      }
+    }
+
+    void loadRooms();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
+  if (auth.isLoading) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-card">
+          <p className="eyebrow">Family Hub</p>
+          <h1>Laddar...</h1>
+          <p>Vi kontrollerar om du redan är inloggad.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <>
+        <AuthForm />
+        {auth.errorMessage && <p className="auth-error">{auth.errorMessage}</p>}
+      </>
+    );
+  }
+
+  const authenticatedUser = currentUser;
 
   function handleCreateBooking(newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) {
     setBookingList((currentBookings) => [
       {
         ...newBooking,
         id: `booking-${Date.now()}`,
-        userId: currentUser.id,
+        userId: authenticatedUser.id,
         status: 'confirmed',
       },
       ...currentBookings,
@@ -86,29 +169,58 @@ export function App() {
     );
   }
 
-  function handleAddRoom(roomName: string) {
-    setRoomList((currentRooms) => [
-      ...currentRooms,
-      {
-        id: `room-${Date.now()}`,
-        name: roomName,
-        isActive: true,
-      },
-    ]);
+  async function handleAddRoom(roomName: string) {
+    setRoomStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const createdRoom = await createRoom(roomName);
+      setRoomList((currentRooms) => [...currentRooms, createdRoom]);
+    } catch {
+      setRoomStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte lägga till rummet i Supabase.',
+      });
+    }
   }
 
-  function handleRenameRoom(roomId: string, name: string) {
-    setRoomList((currentRooms) =>
-      currentRooms.map((room) => (room.id === roomId ? { ...room, name } : room)),
-    );
+  async function handleRenameRoom(roomId: string, name: string) {
+    setRoomStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const updatedRoom = await updateRoomName(roomId, name);
+      setRoomList((currentRooms) =>
+        currentRooms.map((room) => (room.id === roomId ? updatedRoom : room)),
+      );
+    } catch {
+      setRoomStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte byta namn på rummet i Supabase.',
+      });
+    }
   }
 
-  function handleToggleRoom(roomId: string) {
-    setRoomList((currentRooms) =>
-      currentRooms.map((room) =>
-        room.id === roomId ? { ...room, isActive: !room.isActive } : room,
-      ),
-    );
+  async function handleToggleRoom(roomId: string) {
+    const room = roomList.find((currentRoom) => currentRoom.id === roomId);
+
+    if (!room) {
+      return;
+    }
+
+    setRoomStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const updatedRoom = await updateRoomStatus(roomId, !room.isActive);
+      setRoomList((currentRooms) =>
+        currentRooms.map((currentRoom) =>
+          currentRoom.id === roomId ? updatedRoom : currentRoom,
+        ),
+      );
+    } catch {
+      setRoomStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte ändra rummets status i Supabase.',
+      });
+    }
   }
 
   return (
@@ -119,8 +231,11 @@ export function App() {
           <h1>Sommarhusets bokningar</h1>
         </div>
         <div className="user-pill" aria-label="Inloggad användare">
-          <span>{currentUser.displayName}</span>
+          <span>{authenticatedUser.displayName}</span>
           <small>{isAdmin ? 'Admin' : 'Medlem'}</small>
+          <button className="link-button" onClick={auth.signOut} type="button">
+            Logga ut
+          </button>
         </div>
       </header>
 
@@ -148,18 +263,22 @@ export function App() {
           activeRoomsCount={activeRooms.length}
           bookings={confirmedBookingDetails}
           existingBookings={bookingList}
+          profiles={appProfiles}
           roomList={roomList}
+          roomStatus={roomStatus}
         />
       )}
       {activeView === 'bookings' && (
         <BookingsView
           bookings={bookingDetails}
+          currentUser={authenticatedUser}
           existingBookings={bookingList}
           isAdmin={isAdmin}
           onCancelBooking={handleCancelBooking}
           onCreateBooking={handleCreateBooking}
           onUpdateBooking={handleUpdateBooking}
           roomList={roomList}
+          roomStatus={roomStatus}
         />
       )}
       {activeView === 'admin' && isAdmin && (
@@ -169,6 +288,7 @@ export function App() {
           onRenameRoom={handleRenameRoom}
           onToggleRoom={handleToggleRoom}
           roomList={roomList}
+          roomStatus={roomStatus}
         />
       )}
     </main>
@@ -179,12 +299,16 @@ function CalendarView({
   activeRoomsCount,
   bookings,
   existingBookings,
+  profiles,
   roomList,
+  roomStatus,
 }: {
   activeRoomsCount: number;
   bookings: BookingWithDetails[];
   existingBookings: Booking[];
+  profiles: Profile[];
   roomList: Room[];
+  roomStatus: AsyncStatus;
 }) {
   const [startDate, setStartDate] = useState('2026-07-14');
   const [endDate, setEndDate] = useState('2026-07-15');
@@ -243,18 +367,23 @@ function CalendarView({
           </label>
         </div>
 
-        <div className="room-availability-list">
-          {roomList.map((room) => (
-            <RoomAvailabilityItem
-              endDate={endDate}
-              existingBookings={existingBookings}
-              key={room.id}
-              room={room}
-              roomList={roomList}
-              startDate={startDate}
-            />
-          ))}
-        </div>
+        <RoomStatusMessage roomList={roomList} roomStatus={roomStatus} />
+
+        {roomList.length > 0 && (
+          <div className="room-availability-list">
+            {roomList.map((room) => (
+              <RoomAvailabilityItem
+                endDate={endDate}
+                existingBookings={existingBookings}
+                key={room.id}
+                profiles={profiles}
+                room={room}
+                roomList={roomList}
+                startDate={startDate}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="calendar-list" aria-label="Bekräftade bokningar">
@@ -269,12 +398,14 @@ function CalendarView({
 function RoomAvailabilityItem({
   endDate,
   existingBookings,
+  profiles,
   room,
   roomList,
   startDate,
 }: {
   endDate: string;
   existingBookings: Booking[];
+  profiles: Profile[];
   room: Room;
   roomList: Room[];
   startDate: string;
@@ -328,20 +459,24 @@ function RoomAvailabilityItem({
 
 function BookingsView({
   bookings,
+  currentUser,
   existingBookings,
   isAdmin,
   onCancelBooking,
   onCreateBooking,
   onUpdateBooking,
   roomList,
+  roomStatus,
 }: {
   bookings: BookingWithDetails[];
+  currentUser: Profile;
   existingBookings: Booking[];
   isAdmin: boolean;
   onCancelBooking: (bookingId: string) => void;
   onCreateBooking: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
   onUpdateBooking: (updatedBooking: Booking) => void;
   roomList: Room[];
+  roomStatus: AsyncStatus;
 }) {
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const conflicts = findConflictingBookings(exampleBookingRequest, existingBookings);
@@ -387,6 +522,8 @@ function BookingsView({
           roomList={roomList}
         />
       )}
+
+      <RoomStatusMessage roomList={roomList} roomStatus={roomStatus} />
 
       <div className="notice">
         <strong>Test av dubbelbokning</strong>
@@ -452,7 +589,7 @@ function BookingForm({
   const [startDate, setStartDate] = useState(initialBooking?.startDate ?? '2026-07-19');
   const [endDate, setEndDate] = useState(initialBooking?.endDate ?? '2026-07-21');
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(
-    initialBooking?.roomIds ?? ['room-1'],
+    initialBooking?.roomIds ?? [],
   );
   const [availabilityResult, setAvailabilityResult] =
     useState<AvailabilityResult>(initialAvailabilityResult);
@@ -637,22 +774,24 @@ function AdminView({
   onRenameRoom,
   onToggleRoom,
   roomList,
+  roomStatus,
 }: {
   activeRoomsCount: number;
-  onAddRoom: (roomName: string) => void;
-  onRenameRoom: (roomId: string, name: string) => void;
-  onToggleRoom: (roomId: string) => void;
+  onAddRoom: (roomName: string) => Promise<void>;
+  onRenameRoom: (roomId: string, name: string) => Promise<void>;
+  onToggleRoom: (roomId: string) => Promise<void>;
   roomList: Room[];
+  roomStatus: AsyncStatus;
 }) {
   const [newRoomName, setNewRoomName] = useState('');
   const trimmedRoomName = newRoomName.trim();
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!trimmedRoomName) {
       return;
     }
 
-    onAddRoom(trimmedRoomName);
+    await onAddRoom(trimmedRoomName);
     setNewRoomName('');
   }
 
@@ -672,6 +811,8 @@ function AdminView({
         <SummaryStat label="Bokningstyp" value="Per rum" />
       </div>
 
+      <RoomStatusMessage roomList={roomList} roomStatus={roomStatus} />
+
       <form className="admin-room-form" onSubmit={(event) => event.preventDefault()}>
         <label>
           Nytt rum
@@ -688,28 +829,62 @@ function AdminView({
 
       <div className="room-list">
         {roomList.map((room) => (
-          <article className="room-admin-item" key={room.id}>
-            <label>
-              Rumsnamn
-              <input
-                onChange={(event) => onRenameRoom(room.id, event.target.value)}
-                value={room.name}
-              />
-            </label>
-            <div className="item-actions">
-              <strong>{room.isActive ? 'Aktivt' : 'Inaktivt'}</strong>
-              <button
-                className="secondary-button"
-                onClick={() => onToggleRoom(room.id)}
-                type="button"
-              >
-                {room.isActive ? 'Inaktivera' : 'Aktivera'}
-              </button>
-            </div>
-          </article>
+          <RoomAdminItem
+            key={room.id}
+            onRenameRoom={onRenameRoom}
+            onToggleRoom={onToggleRoom}
+            room={room}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+function RoomAdminItem({
+  onRenameRoom,
+  onToggleRoom,
+  room,
+}: {
+  onRenameRoom: (roomId: string, name: string) => Promise<void>;
+  onToggleRoom: (roomId: string) => Promise<void>;
+  room: Room;
+}) {
+  const [draftName, setDraftName] = useState(room.name);
+  const trimmedName = draftName.trim();
+  const hasChanged = trimmedName !== room.name;
+
+  async function handleSaveName() {
+    if (!trimmedName || !hasChanged) {
+      return;
+    }
+
+    await onRenameRoom(room.id, trimmedName);
+  }
+
+  return (
+    <article className="room-admin-item">
+      <label>
+        Rumsnamn
+        <input
+          onChange={(event) => setDraftName(event.target.value)}
+          value={draftName}
+        />
+      </label>
+      <div className="item-actions">
+        <strong>{room.isActive ? 'Aktivt' : 'Inaktivt'}</strong>
+        <button disabled={!trimmedName || !hasChanged} onClick={handleSaveName} type="button">
+          Spara namn
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() => onToggleRoom(room.id)}
+          type="button"
+        >
+          {room.isActive ? 'Inaktivera' : 'Aktivera'}
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -741,6 +916,38 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function RoomStatusMessage({
+  roomList,
+  roomStatus,
+}: {
+  roomList: Room[];
+  roomStatus: AsyncStatus;
+}) {
+  if (roomStatus.isLoading) {
+    return (
+      <div className="availability-message loading">
+        Hämtar rum från Supabase...
+      </div>
+    );
+  }
+
+  if (roomStatus.errorMessage) {
+    return (
+      <div className="availability-message error">{roomStatus.errorMessage}</div>
+    );
+  }
+
+  if (roomList.length === 0) {
+    return (
+      <div className="availability-message idle">
+        Inga rum finns i Supabase ännu. Lägg till rum i Admin-vyn.
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function formatDateRange(startDate: string, endDate: string) {
