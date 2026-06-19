@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AuthForm } from './components/AuthForm';
-import { bookings as initialBookings, profiles } from './data/mockData';
+import { profiles } from './data/mockData';
 import { useAuth } from './hooks/useAuth';
+import {
+  createBooking,
+  fetchBookings,
+} from './services/bookings';
 import {
   createRoom,
   fetchRooms,
@@ -55,7 +59,12 @@ const initialAvailabilityResult: AvailabilityResult = {
 export function App() {
   const auth = useAuth();
   const [activeView, setActiveView] = useState<View>('calendar');
-  const [bookingList, setBookingList] = useState<Booking[]>(initialBookings);
+  const [bookingList, setBookingList] = useState<Booking[]>([]);
+  const [bookingProfiles, setBookingProfiles] = useState<Profile[]>([]);
+  const [bookingStatus, setBookingStatus] = useState<AsyncStatus>({
+    isLoading: false,
+    errorMessage: null,
+  });
   const [roomList, setRoomList] = useState<Room[]>([]);
   const [roomStatus, setRoomStatus] = useState<AsyncStatus>({
     isLoading: false,
@@ -63,12 +72,17 @@ export function App() {
   });
   const currentUser = auth.profile;
   const appProfiles = useMemo(() => {
-    if (!currentUser || profiles.some((profile) => profile.id === currentUser.id)) {
-      return profiles;
+    const profileMap = new Map<string, Profile>();
+
+    profiles.forEach((profile) => profileMap.set(profile.id, profile));
+    bookingProfiles.forEach((profile) => profileMap.set(profile.id, profile));
+
+    if (currentUser) {
+      profileMap.set(currentUser.id, currentUser);
     }
 
-    return [currentUser, ...profiles];
-  }, [currentUser]);
+    return Array.from(profileMap.values());
+  }, [bookingProfiles, currentUser]);
   const isAdmin = currentUser?.role === 'admin';
   const activeRooms = getActiveRooms(roomList);
   const bookingDetails = useMemo(
@@ -118,6 +132,47 @@ export function App() {
     };
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!currentUser) {
+      setBookingList([]);
+      setBookingProfiles([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadBookings() {
+      setBookingStatus({ isLoading: true, errorMessage: null });
+
+      try {
+        const result = await fetchBookings();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setBookingList(result.bookings);
+        setBookingProfiles(result.profiles);
+        setBookingStatus({ isLoading: false, errorMessage: null });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setBookingStatus({
+          isLoading: false,
+          errorMessage: 'Kunde inte hämta bokningar från Supabase.',
+        });
+      }
+    }
+
+    void loadBookings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
   if (auth.isLoading) {
     return (
       <main className="auth-shell">
@@ -141,16 +196,26 @@ export function App() {
 
   const authenticatedUser = currentUser;
 
-  function handleCreateBooking(newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) {
-    setBookingList((currentBookings) => [
-      {
+  async function handleCreateBooking(
+    newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
+  ) {
+    setBookingStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const createdBooking = await createBooking({
         ...newBooking,
-        id: `booking-${Date.now()}`,
         userId: authenticatedUser.id,
-        status: 'confirmed',
-      },
-      ...currentBookings,
-    ]);
+      });
+
+      setBookingList((currentBookings) => [createdBooking, ...currentBookings]);
+    } catch {
+      setBookingStatus({
+        isLoading: false,
+        errorMessage:
+          'Kunde inte skapa bokningen i Supabase. Kontrollera att rummen är lediga.',
+      });
+      throw new Error('Could not create booking.');
+    }
   }
 
   function handleUpdateBooking(updatedBooking: Booking) {
@@ -263,6 +328,7 @@ export function App() {
           activeRoomsCount={activeRooms.length}
           bookings={confirmedBookingDetails}
           existingBookings={bookingList}
+          bookingStatus={bookingStatus}
           profiles={appProfiles}
           roomList={roomList}
           roomStatus={roomStatus}
@@ -271,6 +337,7 @@ export function App() {
       {activeView === 'bookings' && (
         <BookingsView
           bookings={bookingDetails}
+          bookingStatus={bookingStatus}
           currentUser={authenticatedUser}
           existingBookings={bookingList}
           isAdmin={isAdmin}
@@ -297,6 +364,7 @@ export function App() {
 
 function CalendarView({
   activeRoomsCount,
+  bookingStatus,
   bookings,
   existingBookings,
   profiles,
@@ -304,6 +372,7 @@ function CalendarView({
   roomStatus,
 }: {
   activeRoomsCount: number;
+  bookingStatus: AsyncStatus;
   bookings: BookingWithDetails[];
   existingBookings: Booking[];
   profiles: Profile[];
@@ -387,6 +456,10 @@ function CalendarView({
       </div>
 
       <div className="calendar-list" aria-label="Bekräftade bokningar">
+        <BookingStatusMessage
+          bookingList={bookings}
+          bookingStatus={bookingStatus}
+        />
         {bookings.map((booking) => (
           <BookingSummaryCard booking={booking} key={booking.id} />
         ))}
@@ -458,6 +531,7 @@ function RoomAvailabilityItem({
 }
 
 function BookingsView({
+  bookingStatus,
   bookings,
   currentUser,
   existingBookings,
@@ -468,12 +542,15 @@ function BookingsView({
   roomList,
   roomStatus,
 }: {
+  bookingStatus: AsyncStatus;
   bookings: BookingWithDetails[];
   currentUser: Profile;
   existingBookings: Booking[];
   isAdmin: boolean;
   onCancelBooking: (bookingId: string) => void;
-  onCreateBooking: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
+  onCreateBooking: (
+    newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
+  ) => Promise<void>;
   onUpdateBooking: (updatedBooking: Booking) => void;
   roomList: Room[];
   roomStatus: AsyncStatus;
@@ -524,6 +601,7 @@ function BookingsView({
       )}
 
       <RoomStatusMessage roomList={roomList} roomStatus={roomStatus} />
+      <BookingStatusMessage bookingList={bookings} bookingStatus={bookingStatus} />
 
       <div className="notice">
         <strong>Test av dubbelbokning</strong>
@@ -545,19 +623,21 @@ function BookingsView({
               {canManage && (
                 <div className="item-actions">
                   <button
-                    disabled={booking.status === 'cancelled'}
+                    disabled
                     onClick={() => handleEditBooking(booking)}
+                    title="Redigering i Supabase kommer i nästa milstolpe."
                     type="button"
                   >
-                    Redigera
+                    Redigera (7F)
                   </button>
                   <button
                     className="secondary-button"
-                    disabled={booking.status === 'cancelled'}
+                    disabled
                     onClick={() => onCancelBooking(booking.id)}
+                    title="Avbokning i Supabase kommer i nästa milstolpe."
                     type="button"
                   >
-                    Avboka
+                    Avboka (7F)
                   </button>
                 </div>
               )}
@@ -580,7 +660,9 @@ function BookingForm({
   existingBookings: Booking[];
   mode: BookingFormMode;
   onCancelEdit?: () => void;
-  onCreateBooking?: (newBooking: Omit<Booking, 'id' | 'userId' | 'status'>) => void;
+  onCreateBooking?: (
+    newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
+  ) => Promise<void>;
   onUpdateBooking?: (updatedBooking: Booking) => void;
   roomList: Room[];
 }) {
@@ -666,7 +748,7 @@ function BookingForm({
     });
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!canSaveBooking) {
       return;
     }
@@ -681,11 +763,19 @@ function BookingForm({
       return;
     }
 
-    onCreateBooking?.({
-      roomIds: selectedRoomIds,
-      startDate,
-      endDate,
-    });
+    try {
+      await onCreateBooking?.({
+        roomIds: selectedRoomIds,
+        startDate,
+        endDate,
+      });
+    } catch {
+      setAvailabilityResult({
+        status: 'conflict',
+        message: 'Bokningen kunde inte sparas i Supabase.',
+      });
+      return;
+    }
 
     setAvailabilityResult({
       status: 'idle',
@@ -943,6 +1033,40 @@ function RoomStatusMessage({
     return (
       <div className="availability-message idle">
         Inga rum finns i Supabase ännu. Lägg till rum i Admin-vyn.
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function BookingStatusMessage({
+  bookingList,
+  bookingStatus,
+}: {
+  bookingList: BookingWithDetails[];
+  bookingStatus: AsyncStatus;
+}) {
+  if (bookingStatus.isLoading) {
+    return (
+      <div className="availability-message loading">
+        Hämtar bokningar från Supabase...
+      </div>
+    );
+  }
+
+  if (bookingStatus.errorMessage) {
+    return (
+      <div className="availability-message error">
+        {bookingStatus.errorMessage}
+      </div>
+    );
+  }
+
+  if (bookingList.length === 0) {
+    return (
+      <div className="availability-message idle">
+        Inga bokningar finns i Supabase ännu.
       </div>
     );
   }
