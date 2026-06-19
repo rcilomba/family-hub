@@ -8,13 +8,20 @@ import {
   fetchBookings,
   updateBooking,
 } from './services/bookings';
+import { fetchProfiles, updateProfileRole } from './services/profiles';
 import {
   createRoom,
   fetchRooms,
   updateRoomName,
   updateRoomStatus,
 } from './services/rooms';
-import type { Booking, BookingWithDetails, Profile, Room } from './types/booking';
+import type {
+  Booking,
+  BookingWithDetails,
+  Profile,
+  Room,
+  UserRole,
+} from './types/booking';
 import {
   canManageBooking,
   findConflictingBookings,
@@ -63,6 +70,11 @@ export function App() {
     isLoading: false,
     errorMessage: null,
   });
+  const [profileList, setProfileList] = useState<Profile[]>([]);
+  const [profileStatus, setProfileStatus] = useState<AsyncStatus>({
+    isLoading: false,
+    errorMessage: null,
+  });
   const [roomList, setRoomList] = useState<Room[]>([]);
   const [roomStatus, setRoomStatus] = useState<AsyncStatus>({
     isLoading: false,
@@ -73,6 +85,7 @@ export function App() {
     const profileMap = new Map<string, Profile>();
 
     profiles.forEach((profile) => profileMap.set(profile.id, profile));
+    profileList.forEach((profile) => profileMap.set(profile.id, profile));
     bookingProfiles.forEach((profile) => profileMap.set(profile.id, profile));
 
     if (currentUser) {
@@ -80,7 +93,7 @@ export function App() {
     }
 
     return Array.from(profileMap.values());
-  }, [bookingProfiles, currentUser]);
+  }, [bookingProfiles, currentUser, profileList]);
   const isAdmin = currentUser?.role === 'admin';
   const activeRooms = getActiveRooms(roomList);
   const bookingDetails = useMemo(
@@ -165,6 +178,45 @@ export function App() {
     }
 
     void loadBookings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setProfileList([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadProfiles() {
+      setProfileStatus({ isLoading: true, errorMessage: null });
+
+      try {
+        const loadedProfiles = await fetchProfiles();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setProfileList(loadedProfiles);
+        setProfileStatus({ isLoading: false, errorMessage: null });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setProfileStatus({
+          isLoading: false,
+          errorMessage: 'Kunde inte hämta användare från Supabase.',
+        });
+      }
+    }
+
+    void loadProfiles();
 
     return () => {
       isMounted = false;
@@ -320,6 +372,38 @@ export function App() {
     }
   }
 
+  async function handleUpdateProfileRole(profileId: string, role: UserRole) {
+    if (profileId === authenticatedUser.id) {
+      setProfileStatus({
+        isLoading: false,
+        errorMessage: 'Du kan inte ändra din egen adminroll här.',
+      });
+      return;
+    }
+
+    setProfileStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const updatedProfile = await updateProfileRole(profileId, role);
+
+      setProfileList((currentProfiles) =>
+        currentProfiles.map((profile) =>
+          profile.id === updatedProfile.id ? updatedProfile : profile,
+        ),
+      );
+      setBookingProfiles((currentProfiles) =>
+        currentProfiles.map((profile) =>
+          profile.id === updatedProfile.id ? updatedProfile : profile,
+        ),
+      );
+    } catch {
+      setProfileStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte uppdatera användarens roll.',
+      });
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -383,9 +467,13 @@ export function App() {
       {activeView === 'admin' && isAdmin && (
         <AdminView
           activeRoomsCount={activeRooms.length}
+          currentUser={authenticatedUser}
           onAddRoom={handleAddRoom}
           onRenameRoom={handleRenameRoom}
           onToggleRoom={handleToggleRoom}
+          onUpdateProfileRole={handleUpdateProfileRole}
+          profileList={profileList}
+          profileStatus={profileStatus}
           roomList={roomList}
           roomStatus={roomStatus}
         />
@@ -1045,16 +1133,24 @@ function BookingForm({
 
 function AdminView({
   activeRoomsCount,
+  currentUser,
   onAddRoom,
   onRenameRoom,
   onToggleRoom,
+  onUpdateProfileRole,
+  profileList,
+  profileStatus,
   roomList,
   roomStatus,
 }: {
   activeRoomsCount: number;
+  currentUser: Profile;
   onAddRoom: (roomName: string) => Promise<void>;
   onRenameRoom: (roomId: string, name: string) => Promise<void>;
   onToggleRoom: (roomId: string) => Promise<void>;
+  onUpdateProfileRole: (profileId: string, role: UserRole) => Promise<void>;
+  profileList: Profile[];
+  profileStatus: AsyncStatus;
   roomList: Room[];
   roomStatus: AsyncStatus;
 }) {
@@ -1081,6 +1177,7 @@ function AdminView({
       <div className="settings-grid">
         <SummaryStat label="Totalt antal rum" value={roomList.length.toString()} />
         <SummaryStat label="Aktiva rum" value={activeRoomsCount.toString()} />
+        <SummaryStat label="Användare" value={profileList.length.toString()} />
         <SummaryStat label="Bokningstyp" value="Per rum" />
       </div>
 
@@ -1109,6 +1206,33 @@ function AdminView({
             room={room}
           />
         ))}
+      </div>
+
+      <div className="admin-panel">
+        <div>
+          <p className="section-label">Användare</p>
+          <h3>Roller och behörighet</h3>
+          <p>
+            Admin kan ge andra adminrättigheter eller ändra tillbaka dem till
+            medlem.
+          </p>
+        </div>
+
+        <ProfileStatusMessage
+          profileList={profileList}
+          profileStatus={profileStatus}
+        />
+
+        <div className="profile-list">
+          {profileList.map((profile) => (
+            <ProfileAdminItem
+              currentUserId={currentUser.id}
+              key={profile.id}
+              onUpdateProfileRole={onUpdateProfileRole}
+              profile={profile}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -1157,6 +1281,42 @@ function RoomAdminItem({
           {room.isActive ? 'Inaktivera' : 'Aktivera'}
         </button>
       </div>
+    </article>
+  );
+}
+
+function ProfileAdminItem({
+  currentUserId,
+  onUpdateProfileRole,
+  profile,
+}: {
+  currentUserId: string;
+  onUpdateProfileRole: (profileId: string, role: UserRole) => Promise<void>;
+  profile: Profile;
+}) {
+  const isCurrentUser = profile.id === currentUserId;
+  const nextRole: UserRole = profile.role === 'admin' ? 'member' : 'admin';
+
+  return (
+    <article className="profile-admin-item">
+      <div>
+        <h3>{profile.displayName}</h3>
+        <p>{profile.email}</p>
+      </div>
+      <div className="item-actions">
+        <strong>{profile.role === 'admin' ? 'Admin' : 'Medlem'}</strong>
+        <button
+          className="secondary-button"
+          disabled={isCurrentUser}
+          onClick={() => onUpdateProfileRole(profile.id, nextRole)}
+          type="button"
+        >
+          {profile.role === 'admin' ? 'Gör till medlem' : 'Gör till admin'}
+        </button>
+      </div>
+      {isCurrentUser && (
+        <p className="item-note">Du kan inte ändra din egen roll här.</p>
+      )}
     </article>
   );
 }
@@ -1241,6 +1401,40 @@ function RoomStatusMessage({
     return (
       <div className="availability-message idle">
         Inga rum finns ännu. Lägg till rum i Admin-vyn.
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function ProfileStatusMessage({
+  profileList,
+  profileStatus,
+}: {
+  profileList: Profile[];
+  profileStatus: AsyncStatus;
+}) {
+  if (profileStatus.isLoading) {
+    return (
+      <div className="availability-message loading">
+        Hämtar användare från Supabase...
+      </div>
+    );
+  }
+
+  if (profileStatus.errorMessage) {
+    return (
+      <div className="availability-message error">
+        {profileStatus.errorMessage}
+      </div>
+    );
+  }
+
+  if (profileList.length === 0) {
+    return (
+      <div className="availability-message idle">
+        Inga användare finns ännu.
       </div>
     );
   }
