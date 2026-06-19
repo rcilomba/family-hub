@@ -41,12 +41,6 @@ type AsyncStatus = {
   errorMessage: string | null;
 };
 
-const exampleBookingRequest = {
-  roomIds: ['room-1'],
-  startDate: '2026-07-14',
-  endDate: '2026-07-15',
-};
-
 const views: Array<{ id: View; label: string }> = [
   { id: 'calendar', label: 'Kalender' },
   { id: 'bookings', label: 'Bokningar' },
@@ -214,7 +208,7 @@ export function App() {
       setBookingStatus({
         isLoading: false,
         errorMessage:
-          'Kunde inte skapa bokningen i Supabase. Kontrollera att rummen är lediga.',
+          'Kunde inte skapa bokningen. Kontrollera att rummen är lediga.',
       });
       throw new Error('Could not create booking.');
     }
@@ -240,7 +234,7 @@ export function App() {
       setBookingStatus({
         isLoading: false,
         errorMessage:
-          'Kunde inte uppdatera bokningen i Supabase. Kontrollera dubbelbokning.',
+          'Kunde inte uppdatera bokningen. Kontrollera dubbelbokning.',
       });
       throw new Error('Could not update booking.');
     }
@@ -259,7 +253,7 @@ export function App() {
     } catch {
       setBookingStatus({
         isLoading: false,
-        errorMessage: 'Kunde inte avboka bokningen i Supabase.',
+        errorMessage: 'Kunde inte avboka bokningen.',
       });
     }
   }
@@ -273,7 +267,7 @@ export function App() {
     } catch {
       setRoomStatus({
         isLoading: false,
-        errorMessage: 'Kunde inte lägga till rummet i Supabase.',
+        errorMessage: 'Kunde inte lägga till rummet.',
       });
     }
   }
@@ -289,7 +283,7 @@ export function App() {
     } catch {
       setRoomStatus({
         isLoading: false,
-        errorMessage: 'Kunde inte byta namn på rummet i Supabase.',
+        errorMessage: 'Kunde inte byta namn på rummet.',
       });
     }
   }
@@ -313,7 +307,7 @@ export function App() {
     } catch {
       setRoomStatus({
         isLoading: false,
-        errorMessage: 'Kunde inte ändra rummets status i Supabase.',
+        errorMessage: 'Kunde inte ändra rummets status.',
       });
     }
   }
@@ -586,7 +580,6 @@ function BookingsView({
   roomStatus: AsyncStatus;
 }) {
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
-  const conflicts = findConflictingBookings(exampleBookingRequest, existingBookings);
   const editingBooking = bookings.find((booking) => booking.id === editingBookingId);
 
   function handleEditBooking(booking: BookingWithDetails) {
@@ -608,8 +601,8 @@ function BookingsView({
         <p className="section-label">Bokningar</p>
         <h2>Hantera bokningar</h2>
         <p>
-          Skapa, redigera och avboka bokningar lokalt. Admin kan hantera alla
-          bokningar.
+          Skapa nya bokningar och hantera befintliga bokningar för
+          sommarhuset.
         </p>
       </div>
 
@@ -632,16 +625,6 @@ function BookingsView({
 
       <RoomStatusMessage roomList={roomList} roomStatus={roomStatus} />
       <BookingStatusMessage bookingList={bookings} bookingStatus={bookingStatus} />
-
-      <div className="notice">
-        <strong>Test av dubbelbokning</strong>
-        <p>
-          Försök: Rum 1, 14 juli till 15 juli. Resultat:{' '}
-          {conflicts.length > 0
-            ? 'krockar med en befintlig bokning.'
-            : 'rummet är ledigt.'}
-        </p>
-      </div>
 
       <div className="booking-list">
         {bookings.map((booking) => {
@@ -926,9 +909,7 @@ function AdminView({
       <div>
         <p className="section-label">Admin</p>
         <h2>Boendets inställningar</h2>
-        <p>
-          Endast Ramadan/admin kan ändra rum, regler och andra inställningar.
-        </p>
+        <p>Endast admin kan ändra rum och andra inställningar.</p>
       </div>
 
       <div className="settings-grid">
@@ -1068,7 +1049,7 @@ function RoomStatusMessage({
   if (roomList.length === 0) {
     return (
       <div className="availability-message idle">
-        Inga rum finns i Supabase ännu. Lägg till rum i Admin-vyn.
+        Inga rum finns ännu. Lägg till rum i Admin-vyn.
       </div>
     );
   }
@@ -1102,7 +1083,7 @@ function BookingStatusMessage({
   if (bookingList.length === 0) {
     return (
       <div className="availability-message idle">
-        Inga bokningar finns i Supabase ännu.
+        Inga bokningar finns ännu.
       </div>
     );
   }
