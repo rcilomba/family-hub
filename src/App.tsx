@@ -3,8 +3,10 @@ import { AuthForm } from './components/AuthForm';
 import { profiles } from './data/mockData';
 import { useAuth } from './hooks/useAuth';
 import {
+  cancelBooking,
   createBooking,
   fetchBookings,
+  updateBooking,
 } from './services/bookings';
 import {
   createRoom,
@@ -218,20 +220,48 @@ export function App() {
     }
   }
 
-  function handleUpdateBooking(updatedBooking: Booking) {
-    setBookingList((currentBookings) =>
-      currentBookings.map((booking) =>
-        booking.id === updatedBooking.id ? updatedBooking : booking,
-      ),
-    );
+  async function handleUpdateBooking(updatedBooking: Booking) {
+    setBookingStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const savedBooking = await updateBooking({
+        id: updatedBooking.id,
+        roomIds: updatedBooking.roomIds,
+        startDate: updatedBooking.startDate,
+        endDate: updatedBooking.endDate,
+      });
+
+      setBookingList((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === savedBooking.id ? savedBooking : booking,
+        ),
+      );
+    } catch {
+      setBookingStatus({
+        isLoading: false,
+        errorMessage:
+          'Kunde inte uppdatera bokningen i Supabase. Kontrollera dubbelbokning.',
+      });
+      throw new Error('Could not update booking.');
+    }
   }
 
-  function handleCancelBooking(bookingId: string) {
-    setBookingList((currentBookings) =>
-      currentBookings.map((booking) =>
-        booking.id === bookingId ? { ...booking, status: 'cancelled' } : booking,
-      ),
-    );
+  async function handleCancelBooking(bookingId: string) {
+    setBookingStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      await cancelBooking(bookingId);
+      setBookingList((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === bookingId ? { ...booking, status: 'cancelled' } : booking,
+        ),
+      );
+    } catch {
+      setBookingStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte avboka bokningen i Supabase.',
+      });
+    }
   }
 
   async function handleAddRoom(roomName: string) {
@@ -547,11 +577,11 @@ function BookingsView({
   currentUser: Profile;
   existingBookings: Booking[];
   isAdmin: boolean;
-  onCancelBooking: (bookingId: string) => void;
+  onCancelBooking: (bookingId: string) => Promise<void>;
   onCreateBooking: (
     newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
   ) => Promise<void>;
-  onUpdateBooking: (updatedBooking: Booking) => void;
+  onUpdateBooking: (updatedBooking: Booking) => Promise<void>;
   roomList: Room[];
   roomStatus: AsyncStatus;
 }) {
@@ -567,8 +597,8 @@ function BookingsView({
     setEditingBookingId(null);
   }
 
-  function handleSaveEdit(updatedBooking: Booking) {
-    onUpdateBooking(updatedBooking);
+  async function handleSaveEdit(updatedBooking: Booking) {
+    await onUpdateBooking(updatedBooking);
     setEditingBookingId(null);
   }
 
@@ -623,21 +653,19 @@ function BookingsView({
               {canManage && (
                 <div className="item-actions">
                   <button
-                    disabled
+                    disabled={booking.status === 'cancelled'}
                     onClick={() => handleEditBooking(booking)}
-                    title="Redigering i Supabase kommer i nästa milstolpe."
                     type="button"
                   >
-                    Redigera (7F)
+                    Redigera
                   </button>
                   <button
                     className="secondary-button"
-                    disabled
+                    disabled={booking.status === 'cancelled'}
                     onClick={() => onCancelBooking(booking.id)}
-                    title="Avbokning i Supabase kommer i nästa milstolpe."
                     type="button"
                   >
-                    Avboka (7F)
+                    Avboka
                   </button>
                 </div>
               )}
@@ -663,7 +691,7 @@ function BookingForm({
   onCreateBooking?: (
     newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
   ) => Promise<void>;
-  onUpdateBooking?: (updatedBooking: Booking) => void;
+  onUpdateBooking?: (updatedBooking: Booking) => Promise<void>;
   roomList: Room[];
 }) {
   const isEditMode = mode.type === 'edit';
@@ -754,12 +782,20 @@ function BookingForm({
     }
 
     if (isEditMode) {
-      onUpdateBooking?.({
-        ...mode.booking,
-        roomIds: selectedRoomIds,
-        startDate,
-        endDate,
-      });
+      try {
+        await onUpdateBooking?.({
+          ...mode.booking,
+          roomIds: selectedRoomIds,
+          startDate,
+          endDate,
+        });
+      } catch {
+        setAvailabilityResult({
+          status: 'conflict',
+          message: 'Ändringen kunde inte sparas i Supabase.',
+        });
+      }
+
       return;
     }
 

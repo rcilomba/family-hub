@@ -29,6 +29,13 @@ type CreateBookingInput = {
   endDate: string;
 };
 
+type UpdateBookingInput = {
+  id: string;
+  roomIds: string[];
+  startDate: string;
+  endDate: string;
+};
+
 function getSupabaseClient() {
   if (!supabase) {
     throw new Error('Supabase is not configured.');
@@ -146,5 +153,97 @@ export async function createBooking(input: CreateBookingInput) {
     startDate: booking.start_date,
     endDate: booking.end_date,
     status: booking.status,
+  } satisfies Booking;
+}
+
+export async function updateBooking(input: UpdateBookingInput) {
+  const client = getSupabaseClient();
+  const { data: currentRooms, error: currentRoomsError } = await client
+    .from('booking_rooms')
+    .select('room_id')
+    .eq('booking_id', input.id);
+
+  if (currentRoomsError) {
+    throw currentRoomsError;
+  }
+
+  const currentRoomIds = currentRooms.map((room) => room.room_id);
+  const roomIdsToAdd = input.roomIds.filter(
+    (roomId) => !currentRoomIds.includes(roomId),
+  );
+  const roomIdsToRemove = currentRoomIds.filter(
+    (roomId) => !input.roomIds.includes(roomId),
+  );
+  const { data: booking, error: bookingError } = await client
+    .from('bookings')
+    .update({
+      start_date: input.startDate,
+      end_date: input.endDate,
+      status: 'confirmed',
+    })
+    .eq('id', input.id)
+    .select('id, user_id, start_date, end_date, status')
+    .single();
+
+  if (bookingError) {
+    throw bookingError;
+  }
+
+  if (roomIdsToAdd.length > 0) {
+    const bookingRooms = roomIdsToAdd.map((roomId) => ({
+      booking_id: input.id,
+      room_id: roomId,
+    }));
+    const { error: insertRoomsError } = await client
+      .from('booking_rooms')
+      .insert(bookingRooms);
+
+    if (insertRoomsError) {
+      throw insertRoomsError;
+    }
+  }
+
+  if (roomIdsToRemove.length > 0) {
+    const { error: deleteRoomsError } = await client
+      .from('booking_rooms')
+      .delete()
+      .eq('booking_id', input.id)
+      .in('room_id', roomIdsToRemove);
+
+    if (deleteRoomsError) {
+      throw deleteRoomsError;
+    }
+  }
+
+  return {
+    id: booking.id,
+    userId: booking.user_id,
+    roomIds: input.roomIds,
+    startDate: booking.start_date,
+    endDate: booking.end_date,
+    status: booking.status,
+  } satisfies Booking;
+}
+
+export async function cancelBooking(bookingId: string) {
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from('bookings')
+    .update({ status: 'cancelled' })
+    .eq('id', bookingId)
+    .select('id, user_id, start_date, end_date, status')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    userId: data.user_id,
+    roomIds: [],
+    startDate: data.start_date,
+    endDate: data.end_date,
+    status: data.status,
   } satisfies Booking;
 }
