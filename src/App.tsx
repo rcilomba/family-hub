@@ -196,7 +196,7 @@ export function App() {
 
   async function handleCreateBooking(
     newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
-  ) {
+  ): Promise<BookingWithDetails> {
     setBookingStatus({ isLoading: false, errorMessage: null });
 
     try {
@@ -206,6 +206,12 @@ export function App() {
       });
 
       setBookingList((currentBookings) => [createdBooking, ...currentBookings]);
+
+      return getBookingDetails(
+        [createdBooking],
+        [authenticatedUser],
+        roomList,
+      )[0];
     } catch {
       setBookingStatus({
         isLoading: false,
@@ -537,6 +543,7 @@ function CalendarView({
         </div>
 
         <div className="room-availability-list">
+          <RoomStatusMessage roomList={roomList} roomStatus={roomStatus} />
           {roomList.map((room) => (
             <RoomAvailabilityItem
               endDate={selectedDate}
@@ -554,6 +561,7 @@ function CalendarView({
           <BookingStatusMessage
             bookingList={selectedDateBookings}
             bookingStatus={bookingStatus}
+            emptyMessage="Inga bokningar den valda dagen."
           />
           {selectedDateBookings.map((booking) => (
             <BookingSummaryCard booking={booking} key={booking.id} />
@@ -700,20 +708,45 @@ function BookingsView({
   onCancelBooking: (bookingId: string) => Promise<void>;
   onCreateBooking: (
     newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
-  ) => Promise<void>;
+  ) => Promise<BookingWithDetails>;
   onUpdateBooking: (updatedBooking: Booking) => Promise<void>;
   roomList: Room[];
   roomStatus: AsyncStatus;
 }) {
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+  const [latestConfirmation, setLatestConfirmation] =
+    useState<BookingWithDetails | null>(null);
   const editingBooking = bookings.find((booking) => booking.id === editingBookingId);
 
   function handleEditBooking(booking: BookingWithDetails) {
+    setLatestConfirmation(null);
     setEditingBookingId(booking.id);
   }
 
   function handleCancelEdit() {
     setEditingBookingId(null);
+  }
+
+  async function handleCancelWithConfirmation(booking: BookingWithDetails) {
+    const shouldCancel = window.confirm(
+      `Vill du avboka ${booking.rooms
+        .map((room) => room.name)
+        .join(', ')} ${formatDateRange(booking.startDate, booking.endDate)}?`,
+    );
+
+    if (!shouldCancel) {
+      return;
+    }
+
+    await onCancelBooking(booking.id);
+  }
+
+  async function handleCreateWithConfirmation(
+    newBooking: Omit<Booking, 'id' | 'userId' | 'status'>,
+  ) {
+    const createdBooking = await onCreateBooking(newBooking);
+
+    setLatestConfirmation(createdBooking);
   }
 
   async function handleSaveEdit(updatedBooking: Booking) {
@@ -744,8 +777,15 @@ function BookingsView({
         <BookingForm
           existingBookings={existingBookings}
           mode={{ type: 'create' }}
-          onCreateBooking={onCreateBooking}
+          onCreateBooking={handleCreateWithConfirmation}
           roomList={roomList}
+        />
+      )}
+
+      {latestConfirmation && (
+        <BookingConfirmationCard
+          booking={latestConfirmation}
+          onDismiss={() => setLatestConfirmation(null)}
         />
       )}
 
@@ -771,7 +811,7 @@ function BookingsView({
                   <button
                     className="secondary-button"
                     disabled={booking.status === 'cancelled'}
-                    onClick={() => onCancelBooking(booking.id)}
+                    onClick={() => handleCancelWithConfirmation(booking)}
                     type="button"
                   >
                     Avboka
@@ -1121,6 +1161,31 @@ function RoomAdminItem({
   );
 }
 
+function BookingConfirmationCard({
+  booking,
+  onDismiss,
+}: {
+  booking: BookingWithDetails;
+  onDismiss: () => void;
+}) {
+  const confirmation = buildBookingConfirmation(booking);
+
+  return (
+    <article className="confirmation-card" aria-live="polite">
+      <div>
+        <p className="section-label">Bokningsbekräftelse</p>
+        <h3>{confirmation.subject}</h3>
+        {confirmation.lines.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+      </div>
+      <button className="secondary-button" onClick={onDismiss} type="button">
+        Stäng
+      </button>
+    </article>
+  );
+}
+
 function BookingSummaryCard({ booking }: { booking: BookingWithDetails }) {
   return (
     <article className="calendar-booking">
@@ -1186,9 +1251,11 @@ function RoomStatusMessage({
 function BookingStatusMessage({
   bookingList,
   bookingStatus,
+  emptyMessage = 'Inga bokningar finns ännu.',
 }: {
   bookingList: BookingWithDetails[];
   bookingStatus: AsyncStatus;
+  emptyMessage?: string;
 }) {
   if (bookingStatus.isLoading) {
     return (
@@ -1209,7 +1276,7 @@ function BookingStatusMessage({
   if (bookingList.length === 0) {
     return (
       <div className="availability-message idle">
-        Inga bokningar finns ännu.
+        {emptyMessage}
       </div>
     );
   }
@@ -1218,7 +1285,7 @@ function BookingStatusMessage({
 }
 
 function getTodayDateString() {
-  return new Date().toISOString().slice(0, 10);
+  return toDateString(new Date());
 }
 
 function getMonthKey(date: string) {
@@ -1286,8 +1353,26 @@ function parseDateString(date: string) {
   return new Date(year, month - 1, day);
 }
 
+function buildBookingConfirmation(booking: BookingWithDetails) {
+  const roomNames = booking.rooms.map((room) => room.name).join(', ');
+
+  return {
+    subject: 'Bokningen är skapad',
+    lines: [
+      `Rum: ${roomNames}`,
+      `Datum: ${formatDateRange(booking.startDate, booking.endDate)}`,
+      `Bokad av: ${booking.user.displayName}`,
+      'Bekräftelsen visas här i appen nu och kan återanvändas för e-post senare.',
+    ],
+  };
+}
+
 function formatDateRange(startDate: string, endDate: string) {
-  return `${startDate} till ${endDate}`;
+  if (startDate === endDate) {
+    return formatDate(startDate);
+  }
+
+  return `${formatDate(startDate)} till ${formatDate(endDate)}`;
 }
 
 function getRoomOptions(roomList: Room[], selectedRoomIds: string[]) {

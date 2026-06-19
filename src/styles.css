@@ -138,8 +138,8 @@ p {
 }
 
 h1 {
-  font-size: clamp(2rem, 6vw, 4.5rem);
-  line-height: 0.95;
+  font-size: 2.75rem;
+  line-height: 1;
   margin-bottom: 0;
   max-width: 760px;
 }
@@ -281,6 +281,7 @@ p {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  min-height: 4.25rem;
   padding: 0.5rem;
   text-align: left;
 }
@@ -409,6 +410,29 @@ p {
 
 .notice p {
   margin: 0.35rem 0 0;
+}
+
+.confirmation-card {
+  align-items: center;
+  background: #e8f5e9;
+  border: 1px solid #9ccc9f;
+  border-radius: 8px;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.confirmation-card h3 {
+  color: #28642f;
+}
+
+.confirmation-card p {
+  margin-bottom: 0.25rem;
+}
+
+.confirmation-card p:last-child {
+  margin-bottom: 0;
 }
 
 .booking-form {
@@ -561,9 +585,15 @@ p {
 }
 
 @media (max-width: 720px) {
+  .app-shell {
+    width: min(100% - 1rem, 1120px);
+    padding: 1rem 0;
+  }
+
   .topbar,
   .booking-item,
   .calendar-booking,
+  .confirmation-card,
   .month-calendar-header,
   .room-item,
   .room-availability {
@@ -571,21 +601,41 @@ p {
     flex-direction: column;
   }
 
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+  }
+
   .user-pill {
     align-items: flex-start;
+    width: 100%;
   }
 
   .content-section {
+    gap: 1.25rem;
     padding: 1rem;
   }
 
   .calendar-grid {
     gap: 0.35rem;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .calendar-grid strong {
+    font-size: 0.72rem;
   }
 
   .day-cell {
     border-radius: 6px;
+    min-height: 3.25rem;
     padding: 0.35rem;
+  }
+
+  .day-cell span {
+    font-size: 0.85rem;
   }
 
   .day-cell small {
@@ -604,6 +654,16 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .month-calendar,
+  .selected-day-panel,
+  .availability-panel,
+  .booking-form,
+  .confirmation-card,
+  .admin-room-form,
+  .room-admin-item {
+    padding: 0.85rem;
+  }
+
   .admin-room-form,
   .room-admin-item {
     align-items: stretch;
@@ -611,8 +671,16 @@ p {
   }
 
   .form-heading,
+  .form-actions,
   .item-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .form-actions button,
+  .item-actions button,
+  .tabs button,
+  .month-calendar-header button {
+    width: 100%;
   }
 }
