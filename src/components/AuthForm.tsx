@@ -23,12 +23,13 @@ export function AuthForm() {
       email: trimmedEmail,
       options: {
         emailRedirectTo: window.location.origin,
+        shouldCreateUser: true,
       },
     });
 
     if (error) {
       setStatus('error');
-      setMessage('Login-länken kunde inte skickas. Kontrollera e-postadressen.');
+      setMessage(`Login-länken kunde inte skickas: ${error.message}`);
       return;
     }
 
