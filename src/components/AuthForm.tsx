@@ -29,7 +29,7 @@ export function AuthForm() {
 
     if (error) {
       setStatus('error');
-      setMessage(`Login-länken kunde inte skickas: ${error.message}`);
+      setMessage(getAuthErrorMessage(error.message));
       return;
     }
 
@@ -82,4 +82,12 @@ export function AuthForm() {
       </section>
     </main>
   );
+}
+
+function getAuthErrorMessage(errorMessage: string) {
+  if (errorMessage.toLowerCase().includes('rate limit')) {
+    return 'För många login-länkar har skickats på kort tid. Vänta en stund och testa igen.';
+  }
+
+  return `Login-länken kunde inte skickas: ${errorMessage}`;
 }

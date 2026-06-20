@@ -22,6 +22,7 @@ Not implemented yet:
 - Waiting list
 - Notifications before visits
 - Production deployment
+- Custom SMTP for production auth emails
 
 ## Local development
 
@@ -119,6 +120,40 @@ The app has two roles:
 Ramadan should be the first admin. After that, admin users can manage roles from
 the Admin view in the app.
 
+## Custom SMTP for auth emails
+
+Supabase's built-in email service is only meant for testing and has low rate
+limits. Configure custom SMTP before inviting the full family.
+
+Recommended provider: Resend.
+
+Resend SMTP settings:
+
+```bash
+Host: smtp.resend.com
+Port: 587
+Username: resend
+Password: your-resend-api-key
+Sender name: Family Hub
+Sender email: no-reply@your-verified-domain.com
+```
+
+Setup checklist:
+
+1. Create a Resend account.
+2. Add and verify a sending domain in Resend.
+3. Create a Resend API key.
+4. In Supabase, go to Authentication settings.
+5. Open SMTP settings.
+6. Enable custom SMTP.
+7. Add the Resend SMTP values above.
+8. Save the settings.
+9. Send one test magic link from the Netlify app.
+10. Check that the email arrives and redirects back to the Netlify URL.
+
+Do not add the Resend API key to `.env.local`, Netlify, or the frontend code.
+It belongs only in Supabase SMTP settings.
+
 ## Deployment with Netlify
 
 Recommended first deployment target: Netlify.
@@ -177,12 +212,13 @@ Before inviting family members:
 2. Make sure `supabase/schema.sql` has been run.
 3. Make sure `supabase/role-management.sql` has been run.
 4. Confirm Ramadan's profile has `role = 'admin'`.
-5. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify.
-6. Deploy from the `main` branch.
-7. Add the Netlify URL to Supabase Auth settings.
-8. Test magic-link login on the production URL.
-9. Create one test booking.
-10. Check that a member cannot see the Admin tab.
+5. Configure custom SMTP in Supabase Auth.
+6. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify.
+7. Deploy from the `main` branch.
+8. Add the Netlify URL to Supabase Auth settings.
+9. Test magic-link login on the production URL.
+10. Create one test booking.
+11. Check that a member cannot see the Admin tab.
 
 ## Git notes
 
