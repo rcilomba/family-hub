@@ -21,7 +21,7 @@ Not implemented yet:
 - Booking approval workflow
 - Waiting list
 - Notifications before visits
-- Deployment setup
+- Production deployment
 
 ## Local development
 
@@ -56,6 +56,12 @@ Build the app:
 
 ```bash
 npm run build
+```
+
+Preview the production build locally:
+
+```bash
+npm run preview
 ```
 
 ## Supabase setup checklist
@@ -112,6 +118,59 @@ The app has two roles:
 
 Ramadan should be the first admin. After that, admin users can manage roles from
 the Admin view in the app.
+
+## Deployment with Vercel
+
+Recommended first deployment target: Vercel.
+
+Use these settings when importing the GitHub repository:
+
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Install command: `npm install`
+
+Add these environment variables in Vercel:
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+Use the same values as in `.env.local`, but add them in Vercel's project
+settings instead of committing them to Git.
+
+After the first Vercel deploy, copy the production URL, for example:
+
+```bash
+https://family-hub.vercel.app
+```
+
+Then update Supabase Auth settings:
+
+```bash
+Site URL: https://family-hub.vercel.app
+Redirect URLs:
+  http://localhost:5173
+  https://family-hub.vercel.app
+```
+
+Keep `http://localhost:5173` as a redirect URL so local development still works.
+
+## Production checklist
+
+Before inviting family members:
+
+1. Run `npm run build` locally.
+2. Make sure `supabase/schema.sql` has been run.
+3. Make sure `supabase/role-management.sql` has been run.
+4. Confirm Ramadan's profile has `role = 'admin'`.
+5. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Vercel.
+6. Deploy from the `main` branch.
+7. Add the Vercel URL to Supabase Auth settings.
+8. Test magic-link login on the production URL.
+9. Create one test booking.
+10. Check that a member cannot see the Admin tab.
 
 ## Git notes
 
