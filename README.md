@@ -119,43 +119,55 @@ The app has two roles:
 Ramadan should be the first admin. After that, admin users can manage roles from
 the Admin view in the app.
 
-## Deployment with Vercel
+## Deployment with Netlify
 
-Recommended first deployment target: Vercel.
+Recommended first deployment target: Netlify.
 
 Use these settings when importing the GitHub repository:
 
 - Framework preset: `Vite`
 - Build command: `npm run build`
-- Output directory: `dist`
+- Publish directory: `dist`
 - Install command: `npm install`
 
-Add these environment variables in Vercel:
+Add these environment variables in Netlify:
 
 ```bash
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
-Use the same values as in `.env.local`, but add them in Vercel's project
+Use the same values as in `.env.local`, but add them in Netlify's site
 settings instead of committing them to Git.
 
-After the first Vercel deploy, copy the production URL, for example:
+After the first Netlify deploy, copy the production URL, for example:
 
 ```bash
-https://family-hub.vercel.app
+https://family-hub.netlify.app
 ```
 
 Then update Supabase Auth settings:
 
 ```bash
-Site URL: https://family-hub.vercel.app
+Site URL: https://family-hub.netlify.app
 Redirect URLs:
   http://localhost:5173
-  https://family-hub.vercel.app
+  https://family-hub.netlify.app
 ```
 
 Keep `http://localhost:5173` as a redirect URL so local development still works.
+
+### Netlify SPA redirects
+
+Family Hub is a single-page app. Add this redirect rule in Netlify so refreshes
+and direct links keep loading `index.html`:
+
+```bash
+/* /index.html 200
+```
+
+You can add it in Netlify under site redirects, or later as a `_redirects` file
+inside `public/` if the app starts using more direct routes.
 
 ## Production checklist
 
@@ -165,9 +177,9 @@ Before inviting family members:
 2. Make sure `supabase/schema.sql` has been run.
 3. Make sure `supabase/role-management.sql` has been run.
 4. Confirm Ramadan's profile has `role = 'admin'`.
-5. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Vercel.
+5. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify.
 6. Deploy from the `main` branch.
-7. Add the Vercel URL to Supabase Auth settings.
+7. Add the Netlify URL to Supabase Auth settings.
 8. Test magic-link login on the production URL.
 9. Create one test booking.
 10. Check that a member cannot see the Admin tab.
