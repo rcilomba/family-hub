@@ -45,8 +45,12 @@ export function AuthForm() {
   return (
     <main className='auth-shell'>
       <section className='auth-card'>
-        <div>
-          <p className='eyebrow'>Family Hub</p>
+        <div className='brand-block'>
+          <img
+            className='brand-logo auth-logo'
+            src='/kapiamba-logo.png'
+            alt='The Kapiambas'
+          />
           <h1>Logga in</h1>
           <p>
             Ange namn och e-postadress för att komma åt sommarhusets bokningar.

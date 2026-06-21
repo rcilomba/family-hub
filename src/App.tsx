@@ -281,7 +281,11 @@ export function App() {
     return (
       <main className="auth-shell">
         <section className="auth-card">
-          <p className="eyebrow">Family Hub</p>
+          <img
+            className="brand-logo auth-logo"
+            src="/kapiamba-logo.png"
+            alt="The Kapiambas"
+          />
           <h1>Laddar...</h1>
           <p>Vi kontrollerar om du redan är inloggad.</p>
         </section>
@@ -543,9 +547,14 @@ export function App() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">Family Hub</p>
-          <h1>Sommarhusets bokningar</h1>
+        <div className="brand-block">
+          <img
+            className="brand-logo app-logo"
+            src="/kapiamba-logo.png"
+            alt="The Kapiambas"
+          />
+          <h1>Sommarhuset</h1>
+          <p>Boka rum, se tillgänglighet och planera familjens vistelser.</p>
         </div>
         <div className="user-pill" aria-label="Inloggad användare">
           <span>{authenticatedUser.displayName}</span>
