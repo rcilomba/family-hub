@@ -43,10 +43,10 @@ export function AuthForm() {
   }
 
   return (
-    <main className="auth-shell">
-      <section className="auth-card">
+    <main className='auth-shell'>
+      <section className='auth-card'>
         <div>
-          <p className="eyebrow">Family Hub</p>
+          <p className='eyebrow'>Family Hub</p>
           <h1>Logga in</h1>
           <p>
             Ange namn och e-postadress för att komma åt sommarhusets bokningar.
@@ -54,19 +54,22 @@ export function AuthForm() {
         </div>
 
         {!hasSupabaseConfig ? (
-          <div className="availability-message invalid">
+          <div className='availability-message invalid'>
             Lägg till VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY i .env.local
             innan login kan användas.
           </div>
         ) : (
-          <form className="booking-form" onSubmit={(event) => event.preventDefault()}>
+          <form
+            className='booking-form'
+            onSubmit={(event) => event.preventDefault()}
+          >
             <label>
               Namn
               <input
-                autoComplete="name"
+                autoComplete='name'
                 onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Förnamn Efternamn"
-                type="text"
+                placeholder='Namn'
+                type='text'
                 value={displayName}
               />
             </label>
@@ -74,22 +77,22 @@ export function AuthForm() {
             <label>
               E-post
               <input
-                autoComplete="email"
+                autoComplete='email'
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="namn@example.com"
-                type="email"
+                placeholder='namn@example.com'
+                type='email'
                 value={email}
               />
             </label>
 
-            <div className={`availability-message ${status}`}>
-              {message}
-            </div>
+            <div className={`availability-message ${status}`}>{message}</div>
 
             <button
-              disabled={!trimmedDisplayName || !trimmedEmail || status === 'loading'}
+              disabled={
+                !trimmedDisplayName || !trimmedEmail || status === 'loading'
+              }
               onClick={handleSubmit}
-              type="button"
+              type='button'
             >
               Skicka login-länk
             </button>
