@@ -294,16 +294,25 @@ p {
   font-weight: 800;
 }
 
+.day-booking-badges {
+  align-self: stretch;
+  display: grid;
+  gap: 0.2rem;
+}
+
 .day-cell small {
-  align-self: flex-end;
+  align-self: end;
   background: #b45a35;
   border-radius: 999px;
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 800;
-  min-width: 1.45rem;
+  max-width: 100%;
+  overflow: hidden;
   padding: 0.15rem 0.4rem;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .day-cell.outside-month {
@@ -680,8 +689,7 @@ p {
   }
 
   .day-cell small {
-    font-size: 0.7rem;
-    min-width: 1.25rem;
+    font-size: 0.62rem;
     padding: 0.1rem 0.3rem;
   }
 

@@ -68,7 +68,7 @@ export function AuthForm() {
               <input
                 autoComplete='name'
                 onChange={(event) => setDisplayName(event.target.value)}
-                placeholder='Namn'
+                placeholder='Förnamn Efternamn'
                 type='text'
                 value={displayName}
               />

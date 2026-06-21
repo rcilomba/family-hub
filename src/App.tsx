@@ -737,10 +737,11 @@ function CalendarView({
             );
             const isSelected = day.date === selectedDate;
             const isBooked = dayBookings.length > 0;
+            const bookingLabels = dayBookings.map(getCalendarBookingLabel);
 
             return (
               <button
-                aria-label={`${formatDate(day.date)} har ${dayBookings.length} bokningar`}
+                aria-label={`${formatDate(day.date)} har ${bookingLabels.join(', ')}`}
                 className={[
                   'day-cell',
                   day.isCurrentMonth ? '' : 'outside-month',
@@ -754,7 +755,15 @@ function CalendarView({
                 type="button"
               >
                 <span>{day.dayNumber}</span>
-                {isBooked && <small>{dayBookings.length}</small>}
+                {isBooked && (
+                  <div className="day-booking-badges">
+                    {dayBookings.map((booking) => (
+                      <small key={booking.id}>
+                        {getCalendarBookingLabel(booking)}
+                      </small>
+                    ))}
+                  </div>
+                )}
               </button>
             );
           })}
@@ -1853,6 +1862,20 @@ function toDateString(date: Date) {
 
 function bookingIncludesDate(booking: BookingWithDetails, date: string) {
   return booking.startDate <= date && booking.endDate >= date;
+}
+
+function getCalendarBookingLabel(booking: BookingWithDetails) {
+  return `${getInitials(booking.user.displayName)}: Rum ${booking.roomIds.length}`;
+}
+
+function getInitials(displayName: string) {
+  return displayName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((namePart) => namePart[0]?.toUpperCase())
+    .join('.');
 }
 
 function formatMonthLabel(monthKey: string) {
