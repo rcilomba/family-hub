@@ -1,6 +1,6 @@
 :root {
-  color: #1f2426;
-  background: #f8f7f2;
+  color: #202224;
+  background: #f3efe7;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -17,33 +17,44 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(180, 90, 53, 0.12), transparent 28rem),
-    linear-gradient(180deg, #fbfaf6 0%, #eef3e8 100%);
+    linear-gradient(135deg, rgba(39, 93, 87, 0.1) 0 25%, transparent 25% 100%),
+    linear-gradient(180deg, #fbfaf6 0%, #e8eee5 100%);
 }
 
 button {
   border: 0;
   border-radius: 8px;
-  background: #1f4f49;
+  background: #202224;
   color: #ffffff;
   cursor: pointer;
   font: inherit;
   font-weight: 700;
   padding: 0.75rem 1rem;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 button:hover {
-  background: #1f4945;
+  background: #31363a;
+  box-shadow: 0 12px 24px rgba(32, 34, 36, 0.16);
+  transform: translateY(-1px);
+}
+
+button:focus-visible {
+  outline: 3px solid rgba(39, 93, 87, 0.28);
+  outline-offset: 3px;
 }
 
 .secondary-button {
   background: #ffffff;
-  border: 1px solid #c8d4c5;
-  color: #275d57;
+  border: 1px solid #c9d7cf;
+  color: #202224;
 }
 
 .secondary-button:hover {
-  background: #eef3e8;
+  background: #f4f7f1;
 }
 
 .link-button {
@@ -55,7 +66,9 @@ button:hover {
 
 .link-button:hover {
   background: transparent;
+  box-shadow: none;
   color: #1f4945;
+  transform: none;
 }
 
 button:disabled {
@@ -64,12 +77,28 @@ button:disabled {
 }
 
 input {
-  border: 1px solid #c8d4c5;
+  background: #fffdf9;
+  border: 1px solid #cad6ce;
   border-radius: 8px;
-  color: #1d2a2e;
+  color: #202224;
   font: inherit;
   padding: 0.75rem;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
   width: 100%;
+}
+
+input:focus {
+  background: #ffffff;
+  border-color: #275d57;
+  box-shadow: 0 0 0 3px rgba(39, 93, 87, 0.14);
+  outline: none;
+}
+
+input::placeholder {
+  color: #7a8685;
 }
 
 fieldset {
@@ -86,7 +115,7 @@ legend {
 }
 
 .app-shell {
-  width: min(1120px, calc(100% - 2rem));
+  width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 2rem 0;
 }
@@ -99,10 +128,10 @@ legend {
 }
 
 .auth-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #d9e1d7;
+  background: rgba(255, 253, 248, 0.96);
+  border: 1px solid rgba(32, 34, 36, 0.08);
   border-radius: 8px;
-  box-shadow: 0 24px 80px rgba(31, 36, 38, 0.1);
+  box-shadow: 0 30px 90px rgba(32, 34, 36, 0.16);
   display: grid;
   gap: 1.5rem;
   max-width: 620px;
@@ -117,11 +146,16 @@ legend {
 }
 
 .topbar {
+  background: rgba(255, 253, 248, 0.9);
+  border: 1px solid rgba(32, 34, 36, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(32, 34, 36, 0.09);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 0 2rem;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+  padding: 1.25rem;
 }
 
 .brand-block {
@@ -143,12 +177,12 @@ legend {
 }
 
 .app-logo {
-  max-width: 18rem;
+  max-width: 16rem;
 }
 
 .eyebrow,
 .section-label {
-  color: #b45a35;
+  color: #a44e32;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0;
@@ -164,7 +198,7 @@ p {
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   line-height: 1;
   margin-bottom: 0;
   max-width: 760px;
@@ -187,9 +221,10 @@ p {
 
 .user-pill {
   align-items: flex-end;
-  background: #ffffff;
-  border: 1px solid #d9e1d7;
+  background: #202224;
+  border: 1px solid #202224;
   border-radius: 8px;
+  color: #ffffff;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -202,34 +237,42 @@ p {
 }
 
 .user-pill small {
-  color: #b45a35;
+  color: #f0c79f;
   font-weight: 800;
 }
 
 .tabs {
+  background: rgba(255, 253, 248, 0.7);
+  border: 1px solid rgba(32, 34, 36, 0.08);
+  border-radius: 8px;
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
+  padding: 0.45rem;
 }
 
 .tab {
-  background: #ffffff;
-  border: 1px solid #d9e1d7;
-  color: #275d57;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #3b474a;
   min-width: 8rem;
 }
 
 .tab.active {
-  background: #275d57;
+  background: #202224;
   color: #ffffff;
 }
 
+.tab:hover {
+  box-shadow: none;
+}
+
 .content-section {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid #d9e1d7;
+  background: rgba(255, 253, 248, 0.96);
+  border: 1px solid rgba(32, 34, 36, 0.08);
   border-radius: 8px;
-  box-shadow: 0 18px 60px rgba(31, 36, 38, 0.07);
+  box-shadow: 0 22px 70px rgba(32, 34, 36, 0.08);
   display: grid;
   gap: 2rem;
   padding: 1.5rem;
@@ -244,8 +287,8 @@ p {
 
 .summary-grid div,
 .settings-grid div {
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f7f2 100%);
+  border: 1px solid #dce4d9;
   border-radius: 8px;
   display: grid;
   gap: 0.5rem;
@@ -259,7 +302,7 @@ p {
 
 .summary-grid strong,
 .settings-grid strong {
-  color: #275d57;
+  color: #202224;
   font-size: 1.35rem;
 }
 
@@ -277,8 +320,8 @@ p {
 
 .month-calendar,
 .selected-day-panel {
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: #f6f3ec;
+  border: 1px solid #ddd7cb;
   border-radius: 8px;
   display: grid;
   gap: 1rem;
@@ -301,10 +344,10 @@ p {
 .day-cell {
   align-items: start;
   aspect-ratio: 1;
-  background: #ffffff;
-  border: 1px solid #d9e1d7;
+  background: #fffdf9;
+  border: 1px solid #ded8cc;
   border-radius: 8px;
-  color: #1d2a2e;
+  color: #202224;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -314,7 +357,9 @@ p {
 }
 
 .day-cell:hover {
-  background: #eef3e8;
+  background: #f8fbf4;
+  border-color: #9db9ad;
+  box-shadow: inset 0 0 0 1px rgba(39, 93, 87, 0.12);
 }
 
 .day-cell span {
@@ -329,7 +374,7 @@ p {
 
 .day-cell small {
   align-self: end;
-  background: #b45a35;
+  background: #202224;
   border-radius: 999px;
   color: #ffffff;
   font-size: 0.75rem;
@@ -348,12 +393,13 @@ p {
 }
 
 .day-cell.booked {
-  border-color: #e2b18e;
+  background: #fff8ef;
+  border-color: #d59b76;
 }
 
 .day-cell.selected {
-  border-color: #275d57;
-  box-shadow: 0 0 0 2px #275d57;
+  border-color: #202224;
+  box-shadow: 0 0 0 2px #202224;
 }
 
 .booking-list {
@@ -373,8 +419,8 @@ p {
 .room-item,
 .room-availability {
   align-items: center;
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: #fffdf9;
+  border: 1px solid #ded8cc;
   border-radius: 8px;
   display: flex;
   gap: 1rem;
@@ -391,13 +437,13 @@ p {
 .calendar-booking span,
 .room-item strong,
 .room-availability span {
-  color: #275d57;
+  color: #202224;
   font-weight: 800;
 }
 
 .availability-panel {
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: #f6f3ec;
+  border: 1px solid #ddd7cb;
   border-radius: 8px;
   display: grid;
   gap: 1rem;
@@ -472,8 +518,8 @@ p {
 }
 
 .booking-form {
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: #f6f3ec;
+  border: 1px solid #ddd7cb;
   border-radius: 8px;
   display: grid;
   gap: 1rem;
@@ -489,8 +535,8 @@ p {
 
 .admin-room-form {
   align-items: end;
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: #fffdf9;
+  border: 1px solid #ded8cc;
   border-radius: 8px;
   display: grid;
   gap: 1rem;
@@ -499,8 +545,8 @@ p {
 }
 
 .admin-panel {
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: #f6f3ec;
+  border: 1px solid #ddd7cb;
   border-radius: 8px;
   display: grid;
   gap: 1rem;
@@ -518,8 +564,8 @@ p {
 
 .room-admin-item {
   align-items: center;
-  background: #f5f7f2;
-  border: 1px solid #d9e1d7;
+  background: #fffdf9;
+  border: 1px solid #ded8cc;
   border-radius: 8px;
   display: grid;
   gap: 1rem;
@@ -538,8 +584,8 @@ p {
 
 .profile-admin-item {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #d9e1d7;
+  background: #fffdf9;
+  border: 1px solid #ded8cc;
   border-radius: 8px;
   display: grid;
   gap: 0.75rem;
