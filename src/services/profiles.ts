@@ -54,3 +54,19 @@ export async function updateProfileRole(profileId: string, role: UserRole) {
 
   return mapProfile(data);
 }
+
+export async function updateProfileName(profileId: string, displayName: string) {
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from('profiles')
+    .update({ display_name: displayName })
+    .eq('id', profileId)
+    .select('id, email, display_name, role')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapProfile(data);
+}

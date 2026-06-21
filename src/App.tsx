@@ -13,7 +13,11 @@ import {
   fetchBookings,
   updateBooking,
 } from './services/bookings';
-import { fetchProfiles, updateProfileRole } from './services/profiles';
+import {
+  fetchProfiles,
+  updateProfileName,
+  updateProfileRole,
+} from './services/profiles';
 import {
   createRoom,
   fetchRooms,
@@ -454,6 +458,36 @@ export function App() {
     }
   }
 
+  async function handleUpdateProfileName(profileId: string, displayName: string) {
+    const trimmedDisplayName = displayName.trim();
+
+    if (!trimmedDisplayName) {
+      return;
+    }
+
+    setProfileStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const updatedProfile = await updateProfileName(profileId, trimmedDisplayName);
+
+      setProfileList((currentProfiles) =>
+        currentProfiles.map((profile) =>
+          profile.id === updatedProfile.id ? updatedProfile : profile,
+        ),
+      );
+      setBookingProfiles((currentProfiles) =>
+        currentProfiles.map((profile) =>
+          profile.id === updatedProfile.id ? updatedProfile : profile,
+        ),
+      );
+    } catch {
+      setProfileStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte uppdatera användarens namn.',
+      });
+    }
+  }
+
   async function handleAddAllowedEmail(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -577,6 +611,7 @@ export function App() {
           onRenameRoom={handleRenameRoom}
           onRemoveAllowedEmail={handleRemoveAllowedEmail}
           onToggleRoom={handleToggleRoom}
+          onUpdateProfileName={handleUpdateProfileName}
           onUpdateProfileRole={handleUpdateProfileRole}
           profileList={profileList}
           profileStatus={profileStatus}
@@ -1247,6 +1282,7 @@ function AdminView({
   onRenameRoom,
   onRemoveAllowedEmail,
   onToggleRoom,
+  onUpdateProfileName,
   onUpdateProfileRole,
   profileList,
   profileStatus,
@@ -1262,6 +1298,7 @@ function AdminView({
   onRenameRoom: (roomId: string, name: string) => Promise<void>;
   onRemoveAllowedEmail: (email: string) => Promise<void>;
   onToggleRoom: (roomId: string) => Promise<void>;
+  onUpdateProfileName: (profileId: string, displayName: string) => Promise<void>;
   onUpdateProfileRole: (profileId: string, role: UserRole) => Promise<void>;
   profileList: Profile[];
   profileStatus: AsyncStatus;
@@ -1346,6 +1383,7 @@ function AdminView({
             <ProfileAdminItem
               currentUserId={currentUser.id}
               key={profile.id}
+              onUpdateProfileName={onUpdateProfileName}
               onUpdateProfileRole={onUpdateProfileRole}
               profile={profile}
             />
@@ -1520,24 +1558,50 @@ function AllowedEmailItem({
 
 function ProfileAdminItem({
   currentUserId,
+  onUpdateProfileName,
   onUpdateProfileRole,
   profile,
 }: {
   currentUserId: string;
+  onUpdateProfileName: (profileId: string, displayName: string) => Promise<void>;
   onUpdateProfileRole: (profileId: string, role: UserRole) => Promise<void>;
   profile: Profile;
 }) {
+  const [draftName, setDraftName] = useState(profile.displayName);
   const isCurrentUser = profile.id === currentUserId;
   const nextRole: UserRole = profile.role === 'admin' ? 'member' : 'admin';
+  const trimmedName = draftName.trim();
+  const hasNameChanged = trimmedName !== profile.displayName;
+
+  async function handleSaveName() {
+    if (!trimmedName || !hasNameChanged) {
+      return;
+    }
+
+    await onUpdateProfileName(profile.id, trimmedName);
+  }
 
   return (
     <article className="profile-admin-item">
       <div>
-        <h3>{profile.displayName}</h3>
+        <label>
+          Namn
+          <input
+            onChange={(event) => setDraftName(event.target.value)}
+            value={draftName}
+          />
+        </label>
         <p>{profile.email}</p>
       </div>
       <div className="item-actions">
         <strong>{profile.role === 'admin' ? 'Admin' : 'Medlem'}</strong>
+        <button
+          disabled={!trimmedName || !hasNameChanged}
+          onClick={handleSaveName}
+          type="button"
+        >
+          Spara namn
+        </button>
         <button
           className="secondary-button"
           disabled={isCurrentUser}

@@ -472,6 +472,7 @@ p {
 }
 
 .admin-room-form label,
+.profile-admin-item label,
 .room-admin-item label {
   color: #526366;
   display: grid;
