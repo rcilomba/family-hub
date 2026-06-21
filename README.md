@@ -143,7 +143,7 @@ Recommended flow for inviting a family member:
 1. Open the Admin view.
 2. Add the family member's email address to the allowlist.
 3. Send them the Netlify app URL.
-4. They request a magic link.
+4. They enter their name and email address.
 5. Supabase creates their user/profile with the `member` role.
 
 ## Custom SMTP for auth emails

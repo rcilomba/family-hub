@@ -4,15 +4,17 @@ import { hasSupabaseConfig, supabase } from '../lib/supabase';
 type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export function AuthForm() {
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<SubmitStatus>('idle');
   const [message, setMessage] = useState(
-    'Logga in med din e-post. Supabase skickar en säker login-länk.',
+    'Ange namn och e-post. Supabase skickar en säker login-länk.',
   );
+  const trimmedDisplayName = displayName.trim();
   const trimmedEmail = email.trim();
 
   async function handleSubmit() {
-    if (!supabase || !trimmedEmail) {
+    if (!supabase || !trimmedDisplayName || !trimmedEmail) {
       return;
     }
 
@@ -22,6 +24,9 @@ export function AuthForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmedEmail,
       options: {
+        data: {
+          display_name: trimmedDisplayName,
+        },
         emailRedirectTo: window.location.origin,
         shouldCreateUser: true,
       },
@@ -44,7 +49,7 @@ export function AuthForm() {
           <p className="eyebrow">Family Hub</p>
           <h1>Logga in</h1>
           <p>
-            Använd din e-postadress för att komma åt sommarhusets bokningar.
+            Ange namn och e-postadress för att komma åt sommarhusets bokningar.
           </p>
         </div>
 
@@ -55,6 +60,17 @@ export function AuthForm() {
           </div>
         ) : (
           <form className="booking-form" onSubmit={(event) => event.preventDefault()}>
+            <label>
+              Namn
+              <input
+                autoComplete="name"
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="Förnamn Efternamn"
+                type="text"
+                value={displayName}
+              />
+            </label>
+
             <label>
               E-post
               <input
@@ -71,7 +87,7 @@ export function AuthForm() {
             </div>
 
             <button
-              disabled={!trimmedEmail || status === 'loading'}
+              disabled={!trimmedDisplayName || !trimmedEmail || status === 'loading'}
               onClick={handleSubmit}
               type="button"
             >
