@@ -13,6 +13,7 @@ Implemented:
 - Double-booking protection in Supabase
 - Admin room management
 - Admin user and role management
+- Family access allowlist
 - In-app booking confirmation
 
 Not implemented yet:
@@ -71,17 +72,18 @@ npm run preview
 2. Open the Supabase SQL Editor.
 3. Run `supabase/schema.sql`.
 4. Run `supabase/role-management.sql`.
-5. In Supabase Auth settings, set local URLs:
+5. Run `supabase/allowed-emails.sql`.
+6. In Supabase Auth settings, set local URLs:
 
 ```bash
 Site URL: http://localhost:5173
 Redirect URL: http://localhost:5173
 ```
 
-6. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`.
-7. Start the app with `npm run dev`.
-8. Log in once with Ramadan's email.
-9. Promote Ramadan to admin in the Supabase SQL Editor:
+7. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`.
+8. Start the app with `npm run dev`.
+9. Log in once with Ramadan's email.
+10. Promote Ramadan to admin in the Supabase SQL Editor:
 
 ```sql
 update public.profiles
@@ -97,6 +99,7 @@ Run these files in order:
 
 1. `supabase/schema.sql`
 2. `supabase/role-management.sql`
+3. `supabase/allowed-emails.sql`
 
 `schema.sql` creates:
 
@@ -110,6 +113,10 @@ Run these files in order:
 `role-management.sql` removes self-service profile updates so members cannot
 change their own role directly through the API.
 
+`allowed-emails.sql` creates an allowlist for family member email addresses.
+Existing profiles are added automatically when the file is run. After that, new
+users must be added to `allowed_emails` before they can create an account.
+
 ## Admin roles
 
 The app has two roles:
@@ -119,6 +126,25 @@ The app has two roles:
 
 Ramadan should be the first admin. After that, admin users can manage roles from
 the Admin view in the app.
+
+## Family access allowlist
+
+The app uses `public.allowed_emails` to control who can create a new account.
+
+Important behavior:
+
+- Existing users keep access.
+- New users must be added to the allowlist before their first login.
+- Admins can manage the allowlist from the Admin view.
+- Admins cannot remove their own email from the allowlist in the UI.
+
+Recommended flow for inviting a family member:
+
+1. Open the Admin view.
+2. Add the family member's email address to the allowlist.
+3. Send them the Netlify app URL.
+4. They request a magic link.
+5. Supabase creates their user/profile with the `member` role.
 
 ## Custom SMTP for auth emails
 
@@ -211,14 +237,16 @@ Before inviting family members:
 1. Run `npm run build` locally.
 2. Make sure `supabase/schema.sql` has been run.
 3. Make sure `supabase/role-management.sql` has been run.
-4. Confirm Ramadan's profile has `role = 'admin'`.
-5. Configure custom SMTP in Supabase Auth.
-6. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify.
-7. Deploy from the `main` branch.
-8. Add the Netlify URL to Supabase Auth settings.
-9. Test magic-link login on the production URL.
-10. Create one test booking.
-11. Check that a member cannot see the Admin tab.
+4. Make sure `supabase/allowed-emails.sql` has been run.
+5. Confirm Ramadan's profile has `role = 'admin'`.
+6. Confirm Ramadan's email exists in the allowlist.
+7. Configure custom SMTP in Supabase Auth.
+8. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify.
+9. Deploy from the `main` branch.
+10. Add the Netlify URL to Supabase Auth settings.
+11. Test magic-link login on the production URL.
+12. Create one test booking.
+13. Check that a member cannot see the Admin tab.
 
 ## Git notes
 

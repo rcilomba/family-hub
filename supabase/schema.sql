@@ -13,6 +13,12 @@ create table public.profiles (
   updated_at timestamptz not null default now()
 );
 
+create table public.allowed_emails (
+  email text primary key,
+  created_at timestamptz not null default now(),
+  constraint allowed_emails_lowercase_email check (email = lower(email))
+);
+
 create table public.rooms (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -74,6 +80,15 @@ security definer
 set search_path = public
 as $$
 begin
+  if exists (select 1 from public.profiles)
+    and not exists (
+      select 1
+      from public.allowed_emails
+      where email = lower(new.email)
+    ) then
+    raise exception 'Email address is not allowed for this application.';
+  end if;
+
   insert into public.profiles (id, email, display_name)
   values (
     new.id,
@@ -164,6 +179,7 @@ for each row
 execute function public.prevent_booking_update_double_booking();
 
 alter table public.profiles enable row level security;
+alter table public.allowed_emails enable row level security;
 alter table public.rooms enable row level security;
 alter table public.bookings enable row level security;
 alter table public.booking_rooms enable row level security;
@@ -191,6 +207,13 @@ using (true);
 
 create policy "Admins can manage profiles"
 on public.profiles
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "Admins can manage allowed emails"
+on public.allowed_emails
 for all
 to authenticated
 using (public.is_admin())

@@ -7,6 +7,11 @@ export type Profile = {
   role: UserRole;
 };
 
+export type AllowedEmail = {
+  email: string;
+  createdAt: string;
+};
+
 export type Room = {
   id: string;
   name: string;

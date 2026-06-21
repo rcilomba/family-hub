@@ -85,6 +85,10 @@ export function AuthForm() {
 }
 
 function getAuthErrorMessage(errorMessage: string) {
+  if (errorMessage.toLowerCase().includes('not allowed')) {
+    return 'E-postadressen är inte tillagd av admin ännu. Be Ramadan lägga till dig.';
+  }
+
   if (errorMessage.toLowerCase().includes('rate limit')) {
     return 'För många login-länkar har skickats på kort tid. Vänta en stund och testa igen.';
   }

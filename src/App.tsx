@@ -3,6 +3,11 @@ import { AuthForm } from './components/AuthForm';
 import { profiles } from './data/mockData';
 import { useAuth } from './hooks/useAuth';
 import {
+  addAllowedEmail,
+  fetchAllowedEmails,
+  removeAllowedEmail,
+} from './services/allowedEmails';
+import {
   cancelBooking,
   createBooking,
   fetchBookings,
@@ -16,6 +21,7 @@ import {
   updateRoomStatus,
 } from './services/rooms';
 import type {
+  AllowedEmail,
   Booking,
   BookingWithDetails,
   Profile,
@@ -67,6 +73,11 @@ export function App() {
   const [bookingList, setBookingList] = useState<Booking[]>([]);
   const [bookingProfiles, setBookingProfiles] = useState<Profile[]>([]);
   const [bookingStatus, setBookingStatus] = useState<AsyncStatus>({
+    isLoading: false,
+    errorMessage: null,
+  });
+  const [allowedEmailList, setAllowedEmailList] = useState<AllowedEmail[]>([]);
+  const [allowedEmailStatus, setAllowedEmailStatus] = useState<AsyncStatus>({
     isLoading: false,
     errorMessage: null,
   });
@@ -222,6 +233,45 @@ export function App() {
       isMounted = false;
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAllowedEmailList([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadAllowedEmails() {
+      setAllowedEmailStatus({ isLoading: true, errorMessage: null });
+
+      try {
+        const loadedAllowedEmails = await fetchAllowedEmails();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setAllowedEmailList(loadedAllowedEmails);
+        setAllowedEmailStatus({ isLoading: false, errorMessage: null });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setAllowedEmailStatus({
+          isLoading: false,
+          errorMessage: 'Kunde inte hämta tillåtna e-postadresser.',
+        });
+      }
+    }
+
+    void loadAllowedEmails();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAdmin]);
 
   if (auth.isLoading) {
     return (
@@ -404,6 +454,58 @@ export function App() {
     }
   }
 
+  async function handleAddAllowedEmail(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return;
+    }
+
+    setAllowedEmailStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      const createdAllowedEmail = await addAllowedEmail(normalizedEmail);
+
+      setAllowedEmailList((currentAllowedEmails) => [
+        ...currentAllowedEmails.filter(
+          (allowedEmail) => allowedEmail.email !== createdAllowedEmail.email,
+        ),
+        createdAllowedEmail,
+      ].sort((firstEmail, secondEmail) =>
+        firstEmail.email.localeCompare(secondEmail.email),
+      ));
+    } catch {
+      setAllowedEmailStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte lägga till e-postadressen.',
+      });
+    }
+  }
+
+  async function handleRemoveAllowedEmail(email: string) {
+    if (email === authenticatedUser.email.toLowerCase()) {
+      setAllowedEmailStatus({
+        isLoading: false,
+        errorMessage: 'Du kan inte ta bort din egen e-post från allowlistan.',
+      });
+      return;
+    }
+
+    setAllowedEmailStatus({ isLoading: false, errorMessage: null });
+
+    try {
+      await removeAllowedEmail(email);
+      setAllowedEmailList((currentAllowedEmails) =>
+        currentAllowedEmails.filter((allowedEmail) => allowedEmail.email !== email),
+      );
+    } catch {
+      setAllowedEmailStatus({
+        isLoading: false,
+        errorMessage: 'Kunde inte ta bort e-postadressen.',
+      });
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -467,9 +569,13 @@ export function App() {
       {activeView === 'admin' && isAdmin && (
         <AdminView
           activeRoomsCount={activeRooms.length}
+          allowedEmailList={allowedEmailList}
+          allowedEmailStatus={allowedEmailStatus}
           currentUser={authenticatedUser}
+          onAddAllowedEmail={handleAddAllowedEmail}
           onAddRoom={handleAddRoom}
           onRenameRoom={handleRenameRoom}
+          onRemoveAllowedEmail={handleRemoveAllowedEmail}
           onToggleRoom={handleToggleRoom}
           onUpdateProfileRole={handleUpdateProfileRole}
           profileList={profileList}
@@ -1133,9 +1239,13 @@ function BookingForm({
 
 function AdminView({
   activeRoomsCount,
+  allowedEmailList,
+  allowedEmailStatus,
   currentUser,
+  onAddAllowedEmail,
   onAddRoom,
   onRenameRoom,
+  onRemoveAllowedEmail,
   onToggleRoom,
   onUpdateProfileRole,
   profileList,
@@ -1144,9 +1254,13 @@ function AdminView({
   roomStatus,
 }: {
   activeRoomsCount: number;
+  allowedEmailList: AllowedEmail[];
+  allowedEmailStatus: AsyncStatus;
   currentUser: Profile;
+  onAddAllowedEmail: (email: string) => Promise<void>;
   onAddRoom: (roomName: string) => Promise<void>;
   onRenameRoom: (roomId: string, name: string) => Promise<void>;
+  onRemoveAllowedEmail: (email: string) => Promise<void>;
   onToggleRoom: (roomId: string) => Promise<void>;
   onUpdateProfileRole: (profileId: string, role: UserRole) => Promise<void>;
   profileList: Profile[];
@@ -1178,6 +1292,10 @@ function AdminView({
         <SummaryStat label="Totalt antal rum" value={roomList.length.toString()} />
         <SummaryStat label="Aktiva rum" value={activeRoomsCount.toString()} />
         <SummaryStat label="Användare" value={profileList.length.toString()} />
+        <SummaryStat
+          label="Tillåtna e-postadresser"
+          value={allowedEmailList.length.toString()}
+        />
         <SummaryStat label="Bokningstyp" value="Per rum" />
       </div>
 
@@ -1234,6 +1352,14 @@ function AdminView({
           ))}
         </div>
       </div>
+
+      <AllowedEmailsPanel
+        allowedEmailList={allowedEmailList}
+        allowedEmailStatus={allowedEmailStatus}
+        currentUserEmail={currentUser.email}
+        onAddAllowedEmail={onAddAllowedEmail}
+        onRemoveAllowedEmail={onRemoveAllowedEmail}
+      />
     </section>
   );
 }
@@ -1281,6 +1407,113 @@ function RoomAdminItem({
           {room.isActive ? 'Inaktivera' : 'Aktivera'}
         </button>
       </div>
+    </article>
+  );
+}
+
+function AllowedEmailsPanel({
+  allowedEmailList,
+  allowedEmailStatus,
+  currentUserEmail,
+  onAddAllowedEmail,
+  onRemoveAllowedEmail,
+}: {
+  allowedEmailList: AllowedEmail[];
+  allowedEmailStatus: AsyncStatus;
+  currentUserEmail: string;
+  onAddAllowedEmail: (email: string) => Promise<void>;
+  onRemoveAllowedEmail: (email: string) => Promise<void>;
+}) {
+  const [newEmail, setNewEmail] = useState('');
+  const trimmedEmail = newEmail.trim().toLowerCase();
+
+  async function handleSubmit() {
+    if (!trimmedEmail) {
+      return;
+    }
+
+    await onAddAllowedEmail(trimmedEmail);
+    setNewEmail('');
+  }
+
+  return (
+    <div className="admin-panel">
+      <div>
+        <p className="section-label">Åtkomst</p>
+        <h3>Tillåtna e-postadresser</h3>
+        <p>
+          Bara e-postadresser i listan kan skapa ett nytt konto. Befintliga
+          användare påverkas inte.
+        </p>
+      </div>
+
+      <AllowedEmailStatusMessage
+        allowedEmailList={allowedEmailList}
+        allowedEmailStatus={allowedEmailStatus}
+      />
+
+      <form className="admin-room-form" onSubmit={(event) => event.preventDefault()}>
+        <label>
+          Ny e-postadress
+          <input
+            autoComplete="email"
+            onChange={(event) => setNewEmail(event.target.value)}
+            placeholder="namn@example.com"
+            type="email"
+            value={newEmail}
+          />
+        </label>
+        <button disabled={!trimmedEmail} onClick={handleSubmit} type="button">
+          Lägg till e-post
+        </button>
+      </form>
+
+      <div className="profile-list">
+        {allowedEmailList.map((allowedEmail) => (
+          <AllowedEmailItem
+            allowedEmail={allowedEmail}
+            currentUserEmail={currentUserEmail}
+            key={allowedEmail.email}
+            onRemoveAllowedEmail={onRemoveAllowedEmail}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AllowedEmailItem({
+  allowedEmail,
+  currentUserEmail,
+  onRemoveAllowedEmail,
+}: {
+  allowedEmail: AllowedEmail;
+  currentUserEmail: string;
+  onRemoveAllowedEmail: (email: string) => Promise<void>;
+}) {
+  const isCurrentUserEmail =
+    allowedEmail.email === currentUserEmail.trim().toLowerCase();
+
+  return (
+    <article className="profile-admin-item">
+      <div>
+        <h3>{allowedEmail.email}</h3>
+        <p>Tillagd {formatDate(allowedEmail.createdAt.slice(0, 10))}</p>
+      </div>
+      <div className="item-actions">
+        <strong>Tillåten</strong>
+        <button
+          className="secondary-button"
+          disabled={isCurrentUserEmail}
+          onClick={() => onRemoveAllowedEmail(allowedEmail.email)}
+          type="button"
+        >
+          Ta bort
+        </button>
+      </div>
+      {isCurrentUserEmail && (
+        <p className="item-note">Du kan inte ta bort din egen e-post här.</p>
+      )}
     </article>
   );
 }
@@ -1435,6 +1668,40 @@ function ProfileStatusMessage({
     return (
       <div className="availability-message idle">
         Inga användare finns ännu.
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function AllowedEmailStatusMessage({
+  allowedEmailList,
+  allowedEmailStatus,
+}: {
+  allowedEmailList: AllowedEmail[];
+  allowedEmailStatus: AsyncStatus;
+}) {
+  if (allowedEmailStatus.isLoading) {
+    return (
+      <div className="availability-message loading">
+        Hämtar tillåtna e-postadresser från Supabase...
+      </div>
+    );
+  }
+
+  if (allowedEmailStatus.errorMessage) {
+    return (
+      <div className="availability-message error">
+        {allowedEmailStatus.errorMessage}
+      </div>
+    );
+  }
+
+  if (allowedEmailList.length === 0) {
+    return (
+      <div className="availability-message idle">
+        Inga e-postadresser finns i allowlistan ännu.
       </div>
     );
   }
