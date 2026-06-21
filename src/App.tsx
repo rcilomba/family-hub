@@ -74,6 +74,7 @@ const initialAvailabilityResult: AvailabilityResult = {
 export function App() {
   const auth = useAuth();
   const [activeView, setActiveView] = useState<View>('calendar');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [bookingList, setBookingList] = useState<Booking[]>([]);
   const [bookingProfiles, setBookingProfiles] = useState<Profile[]>([]);
   const [bookingStatus, setBookingStatus] = useState<AsyncStatus>({
@@ -556,12 +557,34 @@ export function App() {
           <h1>Sommarhuset</h1>
           <p>Boka rum, se tillgänglighet och planera familjens vistelser.</p>
         </div>
-        <div className="user-pill" aria-label="Inloggad användare">
-          <span>{authenticatedUser.displayName}</span>
-          <small>{isAdmin ? 'Admin' : 'Medlem'}</small>
-          <button className="link-button" onClick={auth.signOut} type="button">
-            Logga ut
+        <div className="account-area">
+          <button
+            aria-expanded={isUserMenuOpen}
+            aria-label="Öppna användarmeny"
+            className="menu-button"
+            onClick={() => setIsUserMenuOpen((isOpen) => !isOpen)}
+            type="button"
+          >
+            <span />
+            <span />
+            <span />
           </button>
+          <div className="user-pill" aria-label="Inloggad användare">
+            <span>{authenticatedUser.displayName}</span>
+            <small>{isAdmin ? 'Admin' : 'Medlem'}</small>
+            <button className="logout-button" onClick={auth.signOut} type="button">
+              Logga ut
+            </button>
+          </div>
+          {isUserMenuOpen && (
+            <div className="mobile-user-menu">
+              <span>{authenticatedUser.displayName}</span>
+              <small>{isAdmin ? 'Admin' : 'Medlem'}</small>
+              <button className="logout-button" onClick={auth.signOut} type="button">
+                Logga ut
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -575,7 +598,10 @@ export function App() {
             <button
               className={activeView === view.id ? 'tab active' : 'tab'}
               key={view.id}
-              onClick={() => setActiveView(view.id)}
+              onClick={() => {
+                setActiveView(view.id);
+                setIsUserMenuOpen(false);
+              }}
               type="button"
             >
               {view.label}
@@ -655,6 +681,7 @@ function CalendarView({
   const [selectedDate, setSelectedDate] = useState(
     bookings[0]?.startDate ?? getTodayDateString(),
   );
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   const [startDate, setStartDate] = useState(selectedDate);
   const [endDate, setEndDate] = useState(selectedDate);
   const calendarDays = getMonthCalendarDays(visibleMonth);
@@ -689,6 +716,7 @@ function CalendarView({
     setSelectedDate(date);
     setStartDate(date);
     setEndDate(date);
+    setIsDayModalOpen(true);
   }
 
   return (
@@ -747,10 +775,13 @@ function CalendarView({
             const isSelected = day.date === selectedDate;
             const isBooked = dayBookings.length > 0;
             const bookingLabels = dayBookings.map(getCalendarBookingLabel);
+            const dayBookingLabel = isBooked
+              ? bookingLabels.join(', ')
+              : 'ingen bokning';
 
             return (
               <button
-                aria-label={`${formatDate(day.date)} har ${bookingLabels.join(', ')}`}
+                aria-label={`${formatDate(day.date)} har ${dayBookingLabel}`}
                 className={[
                   'day-cell',
                   day.isCurrentMonth ? '' : 'outside-month',
@@ -778,6 +809,15 @@ function CalendarView({
           })}
         </div>
       </div>
+
+      {isDayModalOpen && (
+        <DayBookingModal
+          bookingStatus={bookingStatus}
+          bookings={selectedDateBookings}
+          date={selectedDate}
+          onClose={() => setIsDayModalOpen(false)}
+        />
+      )}
 
       <div className="selected-day-panel">
         <div>
@@ -1670,6 +1710,55 @@ function BookingSummaryCard({ booking }: { booking: BookingWithDetails }) {
   );
 }
 
+function DayBookingModal({
+  bookingStatus,
+  bookings,
+  date,
+  onClose,
+}: {
+  bookingStatus: AsyncStatus;
+  bookings: BookingWithDetails[];
+  date: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="day-modal-overlay" role="presentation">
+      <section
+        aria-labelledby="day-modal-title"
+        aria-modal="true"
+        className="day-modal"
+        role="dialog"
+      >
+        <div className="day-modal-header">
+          <div>
+            <p className="section-label">Vald dag</p>
+            <h3 id="day-modal-title">{formatDate(date)}</h3>
+          </div>
+          <button
+            aria-label="Stäng datum"
+            className="modal-close-button"
+            onClick={onClose}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="calendar-list" aria-label="Bokningar för vald dag">
+          <BookingStatusMessage
+            bookingList={bookings}
+            bookingStatus={bookingStatus}
+            emptyMessage="Ingen bokning"
+          />
+          {bookings.map((booking) => (
+            <BookingSummaryCard booking={booking} key={booking.id} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function BookingSummary({ booking }: { booking: BookingWithDetails }) {
   return (
     <div>
@@ -1874,7 +1963,9 @@ function bookingIncludesDate(booking: BookingWithDetails, date: string) {
 }
 
 function getCalendarBookingLabel(booking: BookingWithDetails) {
-  return `${getInitials(booking.user.displayName)}: Rum ${booking.roomIds.length}`;
+  return `${getInitials(booking.user.displayName)}: ${booking.rooms
+    .map((room) => room.name)
+    .join(', ')}`;
 }
 
 function getInitials(displayName: string) {
