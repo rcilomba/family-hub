@@ -283,7 +283,7 @@ export function App() {
         <section className="auth-card">
           <img
             className="brand-logo auth-logo"
-            src="/kapiamba-logo.png"
+            src="/kapiamba-logo-cropped.png"
             alt="The Kapiambas"
           />
           <h1>Laddar...</h1>
@@ -550,7 +550,7 @@ export function App() {
         <div className="brand-block">
           <img
             className="brand-logo app-logo"
-            src="/kapiamba-logo.png"
+            src="/kapiamba-logo-cropped.png"
             alt="The Kapiambas"
           />
           <h1>Sommarhuset</h1>

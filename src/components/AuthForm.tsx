@@ -48,7 +48,7 @@ export function AuthForm() {
         <div className='brand-block'>
           <img
             className='brand-logo auth-logo'
-            src='/kapiamba-logo.png'
+            src='/kapiamba-logo-cropped.png'
             alt='The Kapiambas'
           />
           <h1>Logga in</h1>
