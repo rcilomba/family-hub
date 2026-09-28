@@ -82,16 +82,16 @@ Redirect URL: http://localhost:5173
 
 7. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`.
 8. Start the app with `npm run dev`.
-9. Log in once with Ramadan's email.
-10. Promote Ramadan to admin in the Supabase SQL Editor:
+9. Log in once with your email.
+10. Promote yourself to admin in the Supabase SQL Editor:
 
 ```sql
 update public.profiles
 set role = 'admin'
-where email = 'ramadan@example.com';
+where email = 'you@example.com';
 ```
 
-Replace `ramadan@example.com` with the real login email.
+Replace `you@example.com` with the real login email.
 
 ## Database files
 
@@ -124,7 +124,7 @@ The app has two roles:
 - `admin`: can manage rooms, bookings, users, and roles
 - `member`: can create bookings and manage their own bookings
 
-Ramadan should be the first admin. After that, admin users can manage roles from
+The first user to log in should be promoted to admin. After that, admin users can manage roles from
 the Admin view in the app.
 
 ## Family access allowlist
@@ -238,8 +238,8 @@ Before inviting family members:
 2. Make sure `supabase/schema.sql` has been run.
 3. Make sure `supabase/role-management.sql` has been run.
 4. Make sure `supabase/allowed-emails.sql` has been run.
-5. Confirm Ramadan's profile has `role = 'admin'`.
-6. Confirm Ramadan's email exists in the allowlist.
+5. Confirm the first admin's profile has role = 'admin'.
+6. Confirm the first admin's email exists in the allowlist.
 7. Configure custom SMTP in Supabase Auth.
 8. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify.
 9. Deploy from the `main` branch.
