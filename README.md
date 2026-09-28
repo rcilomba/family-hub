@@ -1,6 +1,7 @@
 # Family Hub
 
 Webapp for booking rooms in a shared family summer house.
+Live: https://thekapiambas.netlify.app/
 
 ## MVP status
 
@@ -16,7 +17,7 @@ Implemented:
 - Family access allowlist
 - In-app booking confirmation
 
-Not implemented yet:
+Implemented yet:
 
 - Real email confirmation after booking
 - Booking approval workflow
