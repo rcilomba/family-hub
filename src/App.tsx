@@ -696,11 +696,9 @@ function CalendarView({
   roomStatus: AsyncStatus;
 }) {
   const [visibleMonth, setVisibleMonth] = useState(() =>
-    getMonthKey(bookings[0]?.startDate ?? getTodayDateString()),
+    getMonthKey(getTodayDateString()),
   );
-  const [selectedDate, setSelectedDate] = useState(
-    bookings[0]?.startDate ?? getTodayDateString(),
-  );
+  const [selectedDate, setSelectedDate] = useState(getTodayDateString);
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   const [startDate, setStartDate] = useState(selectedDate);
   const [endDate, setEndDate] = useState(selectedDate);
@@ -720,17 +718,6 @@ function CalendarView({
     startDate,
     endDate,
   );
-
-  useEffect(() => {
-    if (bookings.length === 0) {
-      return;
-    }
-
-    setVisibleMonth(getMonthKey(bookings[0].startDate));
-    setSelectedDate(bookings[0].startDate);
-    setStartDate(bookings[0].startDate);
-    setEndDate(bookings[0].startDate);
-  }, [bookings.length]);
 
   function handleSelectDate(date: string) {
     setSelectedDate(date);
