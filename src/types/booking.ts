@@ -18,7 +18,7 @@ export type Room = {
   isActive: boolean;
 };
 
-export type BookingStatus = 'confirmed' | 'cancelled';
+export type BookingStatus = 'confirmed' | 'cancelled' | 'pending' | 'rejected';
 
 export type Booking = {
   id: string;
@@ -27,6 +27,7 @@ export type Booking = {
   startDate: string;
   endDate: string;
   status: BookingStatus;
+  approvedBy?: string[];
 };
 
 export type BookingWithDetails = Booking & {

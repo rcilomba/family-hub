@@ -249,6 +249,30 @@ Before inviting family members:
 12. Create one test booking.
 13. Check that a member cannot see the Admin tab.
 
+## Booking requests
+
+Run `supabase/booking-requests.sql` in Supabase SQL Editor before deploying
+this version. Do not rerun schema.sql on an existing database. For a new
+database, run schema.sql first and then booking-requests.sql.
+
+Bookings with free rooms but dates overlapping another person's confirmed
+stay start as pending. All overlapping owners must approve; an admin can
+override their decisions. Pending requests do not reserve rooms. The database
+checks availability again before confirmation. Edits reset approvals.
+Cancellation remains admin-only. Rejected requests can be replaced with a
+new request. Use the refresh button in Bookings to load others' decisions.
+Email notifications are not included in this milestone.
+
+All booking writes use authenticated database functions. This prevents direct
+table writes from bypassing approval and saves bookings and rooms atomically.
+Existing confirmed bookings keep their status when the migration is applied.
+
+`supabase/booking-requests.test.sql` contains rollback-based integration tests
+for approval, denial, editing, authorization and room conflicts. Run it in a
+separate SQL Editor query after the migration, preferably in a test project.
+It does not test simultaneous sessions. For that, send two requests for the
+same free room concurrently: only one may be confirmed; the other must fail.
+
 ## Git notes
 
 Do not commit local-only files:

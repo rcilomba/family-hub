@@ -9,6 +9,7 @@ import {
 } from './services/allowedEmails';
 import {
   cancelBooking,
+  decideBookingRequest,
   createBooking,
   fetchBookings,
   updateBooking,
@@ -284,8 +285,8 @@ export function App() {
         <section className="auth-card">
           <img
             className="brand-logo auth-logo"
-            src="/kapiamba-logo-cropped.png"
-            alt="The Kapiambas"
+            src="/kapiamba-cropped.png"
+            alt="The Kapiamba"
           />
           <h1>Laddar...</h1>
           <p>Vi kontrollerar om du redan är inloggad.</p>
@@ -356,6 +357,23 @@ export function App() {
           'Kunde inte uppdatera bokningen. Kontrollera dubbelbokning.',
       });
       throw new Error('Could not update booking.');
+    }
+  }
+
+  async function handleDecideBooking(bookingId: string, approve: boolean) {
+    await decideBookingRequest(bookingId, approve);
+    await handleRefreshBookings();
+  }
+
+  async function handleRefreshBookings() {
+    setBookingStatus({ isLoading: true, errorMessage: null });
+    try {
+      const result = await fetchBookings();
+      setBookingList(result.bookings);
+      setBookingProfiles(result.profiles);
+      setBookingStatus({ isLoading: false, errorMessage: null });
+    } catch {
+      setBookingStatus({ isLoading: false, errorMessage: 'Kunde inte uppdatera bokningarna.' });
     }
   }
 
@@ -551,8 +569,8 @@ export function App() {
         <div className="brand-block">
           <img
             className="brand-logo app-logo"
-            src="/kapiamba-logo-cropped.png"
-            alt="The Kapiambas"
+            src="/kapiamba-cropped.png"
+            alt="The Kapiamba"
           />
           <h1>Sommarhuset</h1>
           <p>Boka rum, se tillgänglighet och planera familjens vistelser.</p>
@@ -629,6 +647,8 @@ export function App() {
           existingBookings={bookingList}
           isAdmin={isAdmin}
           onCancelBooking={handleCancelBooking}
+          onDecideBooking={handleDecideBooking}
+          onRefreshBookings={handleRefreshBookings}
           onCreateBooking={handleCreateBooking}
           onUpdateBooking={handleUpdateBooking}
           roomList={roomList}
@@ -976,6 +996,8 @@ function RoomAvailabilityItem({
 }
 
 function BookingsView({
+  onDecideBooking,
+  onRefreshBookings,
   bookingStatus,
   bookings,
   currentUser,
@@ -988,6 +1010,8 @@ function BookingsView({
   roomStatus,
 }: {
   bookingStatus: AsyncStatus;
+  onDecideBooking: (bookingId: string, approve: boolean) => Promise<void>;
+  onRefreshBookings: () => Promise<void>;
   bookings: BookingWithDetails[];
   currentUser: Profile;
   existingBookings: Booking[];
@@ -1054,6 +1078,7 @@ function BookingsView({
 
       {editingBooking ? (
         <BookingForm
+          currentUserId={currentUser.id}
           existingBookings={existingBookings}
           mode={{ type: 'edit', booking: editingBooking }}
           onCancelEdit={handleCancelEdit}
@@ -1062,6 +1087,7 @@ function BookingsView({
         />
       ) : (
         <BookingForm
+          currentUserId={currentUser.id}
           existingBookings={existingBookings}
           mode={{ type: 'create' }}
           onCreateBooking={handleCreateWithConfirmation}
@@ -1078,6 +1104,8 @@ function BookingsView({
 
       <RoomStatusMessage roomList={roomList} roomStatus={roomStatus} />
       <BookingStatusMessage bookingList={bookings} bookingStatus={bookingStatus} />
+      <button className="secondary-button" disabled={bookingStatus.isLoading}
+        onClick={onRefreshBookings} type="button">Uppdatera bokningar</button>
 
       <div className="booking-list">
         {bookings.map((booking) => {
@@ -1086,10 +1114,18 @@ function BookingsView({
           return (
             <article className="booking-item" key={booking.id}>
               <BookingSummary booking={booking} />
+              {booking.status === 'pending' && (
+                <BookingRequestActions
+                  booking={booking}
+                  bookings={bookings}
+                  currentUser={currentUser}
+                  onDecide={onDecideBooking}
+                />
+              )}
               {canManage && (
                 <div className="item-actions">
                   <button
-                    disabled={booking.status === 'cancelled'}
+                    disabled={!['confirmed', 'pending'].includes(booking.status)}
                     onClick={() => handleEditBooking(booking)}
                     type="button"
                   >
@@ -1097,7 +1133,7 @@ function BookingsView({
                   </button>
                   <button
                     className="secondary-button"
-                    disabled={booking.status === 'cancelled'}
+                    disabled={!isAdmin || booking.status === 'cancelled'}
                     onClick={() => handleCancelWithConfirmation(booking)}
                     type="button"
                   >
@@ -1114,6 +1150,7 @@ function BookingsView({
 }
 
 function BookingForm({
+  currentUserId,
   existingBookings,
   mode,
   onCancelEdit,
@@ -1122,6 +1159,7 @@ function BookingForm({
   roomList,
 }: {
   existingBookings: Booking[];
+  currentUserId: string;
   mode: BookingFormMode;
   onCancelEdit?: () => void;
   onCreateBooking?: (
@@ -1131,6 +1169,7 @@ function BookingForm({
   roomList: Room[];
 }) {
   const isEditMode = mode.type === 'edit';
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const initialBooking = isEditMode ? mode.booking : null;
   const [startDate, setStartDate] = useState(initialBooking?.startDate ?? '2026-07-19');
   const [endDate, setEndDate] = useState(initialBooking?.endDate ?? '2026-07-21');
@@ -1142,6 +1181,11 @@ function BookingForm({
   const roomOptions = getRoomOptions(roomList, selectedRoomIds);
   const canSaveBooking = availabilityResult.status === 'available';
   const title = isEditMode ? 'Redigera bokning' : 'Skapa bokning';
+  const needsApproval = existingBookings.some((booking) =>
+    booking.id !== initialBooking?.id && booking.status === 'confirmed' &&
+    booking.userId !== (initialBooking?.userId ?? currentUserId) &&
+    booking.startDate <= endDate && booking.endDate >= startDate,
+  );
 
   function resetAvailabilityResult() {
     setAvailabilityResult(initialAvailabilityResult);
@@ -1208,14 +1252,17 @@ function BookingForm({
 
     setAvailabilityResult({
       status: 'available',
-      message: 'Rummen är lediga. Du kan spara bokningen.',
+      message: needsApproval
+        ? 'Rummen är lediga. Vistelsen överlappar en annan bokning och kräver godkännande.'
+        : 'Rummen är lediga. Du kan spara bokningen.',
     });
   }
 
   async function handleSubmit() {
-    if (!canSaveBooking) {
+    if (!canSaveBooking || isSubmitting) {
       return;
     }
+    setIsSubmitting(true);
 
     if (isEditMode) {
       try {
@@ -1230,6 +1277,8 @@ function BookingForm({
           status: 'conflict',
           message: 'Ändringen kunde inte sparas i Supabase.',
         });
+      } finally {
+        setIsSubmitting(false);
       }
 
       return;
@@ -1247,11 +1296,13 @@ function BookingForm({
         message: 'Bokningen kunde inte sparas i Supabase.',
       });
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     setAvailabilityResult({
       status: 'idle',
-      message: 'Bokningen skapades. Du kan skapa en till bokning om du vill.',
+      message: 'Bokningen eller förfrågan har sparats.',
     });
   }
 
@@ -1321,8 +1372,8 @@ function BookingForm({
           Kontrollera tillgänglighet
         </button>
         {canSaveBooking && (
-          <button onClick={handleSubmit} type="button">
-            {isEditMode ? 'Spara ändringar' : 'Skapa bokning'}
+          <button disabled={isSubmitting} onClick={handleSubmit} type="button">
+            {isEditMode ? 'Spara ändringar' : needsApproval ? 'Skicka förfrågan' : 'Skapa bokning'}
           </button>
         )}
       </div>
@@ -1701,11 +1752,61 @@ function BookingConfirmationCard({
   );
 }
 
+function BookingRequestActions({ booking, bookings, currentUser, onDecide }: {
+  booking: BookingWithDetails;
+  bookings: BookingWithDetails[];
+  currentUser: Profile;
+  onDecide: (id: string, approve: boolean) => Promise<void>;
+}) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requiredUsers = [...new Map(bookings.filter((item) =>
+    item.status === 'confirmed' && item.userId !== booking.userId &&
+    item.startDate <= booking.endDate && item.endDate >= booking.startDate,
+  ).map((item) => [item.userId, item.user])).values()];
+  const approvedBy = booking.approvedBy ?? [];
+  const canDecide = currentUser.role === 'admin' ||
+    requiredUsers.some((user) => user.id === currentUser.id);
+  const alreadyApproved = approvedBy.includes(currentUser.id);
+
+  async function decide(approve: boolean) {
+    setIsSaving(true);
+    setError(null);
+    try {
+      await onDecide(booking.id, approve);
+    } catch {
+      setError('Beslutet kunde inte sparas. Uppdatera listan och kontrollera att rummen fortfarande är lediga.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="request-actions">
+      <p>Förfrågan reserverar inte rummen.</p>
+      {requiredUsers.map((user) => (
+        <p key={user.id}>{user.displayName}: {approvedBy.includes(user.id) ? 'Godkänt' : 'Inväntar svar'}</p>
+      ))}
+      {canDecide && (
+        <div className="item-actions">
+          <button disabled={isSaving || (alreadyApproved && currentUser.role !== 'admin')}
+            onClick={() => decide(true)} type="button">
+            {currentUser.role === 'admin' ? 'Godkänn som admin' : 'Godkänn'}
+          </button>
+          <button className="secondary-button" disabled={isSaving}
+            onClick={() => decide(false)} type="button">Neka</button>
+        </div>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function BookingSummaryCard({ booking }: { booking: BookingWithDetails }) {
   return (
     <article className="calendar-booking">
       <BookingSummary booking={booking} />
-      <span>{booking.status === 'confirmed' ? 'Bokad' : 'Avbokad'}</span>
+      <span>{getStatusLabel(booking)}</span>
     </article>
   );
 }
@@ -2005,12 +2106,12 @@ function buildBookingConfirmation(booking: BookingWithDetails) {
   const roomNames = booking.rooms.map((room) => room.name).join(', ');
 
   return {
-    subject: 'Bokningen är skapad',
+    subject: booking.status === 'pending' ? 'Förfrågan är skickad' : 'Bokningen är skapad',
     lines: [
       `Rum: ${roomNames}`,
       `Datum: ${formatDateRange(booking.startDate, booking.endDate)}`,
       `Bokad av: ${booking.user.displayName}`,
-      'Bekräftelsen visas här i appen nu och kan återanvändas för e-post senare.',
+      getStatusLabel(booking),
     ],
   };
 }
@@ -2030,5 +2131,11 @@ function getRoomOptions(roomList: Room[], selectedRoomIds: string[]) {
 }
 
 function getStatusLabel(booking: BookingWithDetails) {
-  return booking.status === 'confirmed' ? 'Bekräftad' : 'Avbokad';
+  const labels = {
+    confirmed: 'Bekräftad',
+    cancelled: 'Avbokad',
+    pending: 'Väntar på godkännande',
+    rejected: 'Nekad',
+  };
+  return labels[booking.status];
 }

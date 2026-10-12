@@ -482,6 +482,23 @@ p {
   gap: 0.75rem;
 }
 
+.request-actions {
+  display: grid;
+  flex: 1 1 18rem;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.booking-item {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+.request-actions p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .calendar-list,
 .room-list,
 .room-availability-list {
