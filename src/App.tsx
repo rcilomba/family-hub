@@ -47,6 +47,7 @@ import { RoomStatusMessage } from './components/status/RoomStatusMessage';
 import { ProfileStatusMessage } from './components/status/ProfileStatusMessage';
 import { AllowedEmailStatusMessage } from './components/status/AllowedEmailStatusMessage';
 import { BookingStatusMessage } from './components/status/BookingStatusMessage';
+import { formatDate, formatDateRange } from './utils/dateUtils';
 
 type View = 'calendar' | 'bookings' | 'admin';
 
@@ -2049,20 +2050,6 @@ function formatMonthLabel(monthKey: string) {
   }).format(new Date(year, month - 1, 1));
 }
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('sv-SE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(parseDateString(date));
-}
-
-function parseDateString(date: string) {
-  const [year, month, day] = date.split('-').map(Number);
-
-  return new Date(year, month - 1, day);
-}
-
 function buildBookingConfirmation(booking: BookingWithDetails) {
   const roomNames = booking.rooms.map((room) => room.name).join(', ');
 
@@ -2078,14 +2065,6 @@ function buildBookingConfirmation(booking: BookingWithDetails) {
       getStatusLabel(booking),
     ],
   };
-}
-
-function formatDateRange(startDate: string, endDate: string) {
-  if (startDate === endDate) {
-    return formatDate(startDate);
-  }
-
-  return `${formatDate(startDate)} till ${formatDate(endDate)}`;
 }
 
 function getRoomOptions(roomList: Room[], selectedRoomIds: string[]) {
