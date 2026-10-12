@@ -48,9 +48,9 @@ import { ProfileStatusMessage } from './components/status/ProfileStatusMessage';
 import { AllowedEmailStatusMessage } from './components/status/AllowedEmailStatusMessage';
 import { BookingStatusMessage } from './components/status/BookingStatusMessage';
 import { formatDate, formatDateRange } from './utils/dateUtils';
-import { getStatusLabel } from './utils/bookingPresentation';
 import { BookingSummary } from './components/bookings/BookingSummary';
 import { BookingSummaryCard } from './components/bookings/BookingSummaryCard';
+import { BookingConfirmationCard } from './components/bookings/BookingConfirmationCard';
 
 type View = 'calendar' | 'bookings' | 'admin';
 
@@ -1828,31 +1828,6 @@ function ProfileAdminItem({
   );
 }
 
-function BookingConfirmationCard({
-  booking,
-  onDismiss,
-}: {
-  booking: BookingWithDetails;
-  onDismiss: () => void;
-}) {
-  const confirmation = buildBookingConfirmation(booking);
-
-  return (
-    <article className='confirmation-card' aria-live='polite'>
-      <div>
-        <p className='section-label'>Bokningsbekräftelse</p>
-        <h3>{confirmation.subject}</h3>
-        {confirmation.lines.map((line) => (
-          <p key={line}>{line}</p>
-        ))}
-      </div>
-      <button className='secondary-button' onClick={onDismiss} type='button'>
-        Stäng
-      </button>
-    </article>
-  );
-}
-
 function BookingRequestActions({
   booking,
   bookings,
@@ -2056,23 +2031,6 @@ function formatMonthLabel(monthKey: string) {
     month: 'long',
     year: 'numeric',
   }).format(new Date(year, month - 1, 1));
-}
-
-function buildBookingConfirmation(booking: BookingWithDetails) {
-  const roomNames = booking.rooms.map((room) => room.name).join(', ');
-
-  return {
-    subject:
-      booking.status === 'pending'
-        ? 'Förfrågan är skickad'
-        : 'Bokningen är skapad',
-    lines: [
-      `Rum: ${roomNames}`,
-      `Datum: ${formatDateRange(booking.startDate, booking.endDate)}`,
-      `Bokad av: ${booking.user.displayName}`,
-      getStatusLabel(booking),
-    ],
-  };
 }
 
 function getRoomOptions(roomList: Room[], selectedRoomIds: string[]) {
