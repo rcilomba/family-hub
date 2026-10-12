@@ -44,6 +44,7 @@ import {
 import { SummaryStat } from './components/SummaryStat';
 import type { AsyncStatus } from './types/asyncStatus';
 import { RoomStatusMessage } from './components/status/RoomStatusMessage';
+import { ProfileStatusMessage } from './components/status/ProfileStatusMessage';
 
 type View = 'calendar' | 'bookings' | 'admin';
 
@@ -1969,40 +1970,6 @@ function BookingSummary({ booking }: { booking: BookingWithDetails }) {
       </p>
     </div>
   );
-}
-
-function ProfileStatusMessage({
-  profileList,
-  profileStatus,
-}: {
-  profileList: Profile[];
-  profileStatus: AsyncStatus;
-}) {
-  if (profileStatus.isLoading) {
-    return (
-      <div className='availability-message loading'>
-        Hämtar användare från Supabase...
-      </div>
-    );
-  }
-
-  if (profileStatus.errorMessage) {
-    return (
-      <div className='availability-message error'>
-        {profileStatus.errorMessage}
-      </div>
-    );
-  }
-
-  if (profileList.length === 0) {
-    return (
-      <div className='availability-message idle'>
-        Inga användare finns ännu.
-      </div>
-    );
-  }
-
-  return null;
 }
 
 function AllowedEmailStatusMessage({
