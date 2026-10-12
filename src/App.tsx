@@ -50,6 +50,7 @@ import { BookingStatusMessage } from './components/status/BookingStatusMessage';
 import { formatDate, formatDateRange } from './utils/dateUtils';
 import { getStatusLabel } from './utils/bookingPresentation';
 import { BookingSummary } from './components/bookings/BookingSummary';
+import { BookingSummaryCard } from './components/bookings/BookingSummaryCard';
 
 type View = 'calendar' | 'bookings' | 'admin';
 
@@ -1930,15 +1931,6 @@ function BookingRequestActions({
       )}
       {error && <p role='alert'>{error}</p>}
     </div>
-  );
-}
-
-function BookingSummaryCard({ booking }: { booking: BookingWithDetails }) {
-  return (
-    <article className='calendar-booking'>
-      <BookingSummary booking={booking} />
-      <span>{getStatusLabel(booking)}</span>
-    </article>
   );
 }
 
