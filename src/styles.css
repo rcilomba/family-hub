@@ -618,7 +618,16 @@ p {
   padding: 1rem;
 }
 
-.booking-form > label {
+.booking-form-editing {
+  border: 2px solid #275d57;
+}
+
+.booking-form-editing input[type='date'] {
+  background: #edf6f0;
+  border-color: #275d57;
+}
+
+.booking-form>label {
   color: #526366;
   display: grid;
   font-weight: 800;

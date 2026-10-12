@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AuthForm } from './components/AuthForm';
 import { profiles } from './data/mockData';
 import { useAuth } from './hooks/useAuth';
@@ -48,6 +48,7 @@ import { ProfileStatusMessage } from './components/status/ProfileStatusMessage';
 import { AllowedEmailStatusMessage } from './components/status/AllowedEmailStatusMessage';
 import { BookingStatusMessage } from './components/status/BookingStatusMessage';
 import { formatDate, formatDateRange } from './utils/dateUtils';
+import { getStatusLabel } from './utils/bookingPresentation';
 
 type View = 'calendar' | 'bookings' | 'admin';
 
@@ -1096,6 +1097,7 @@ function BookingsView({
 
       {editingBooking ? (
         <BookingForm
+          key={editingBooking.id}
           currentUserId={currentUser.id}
           existingBookings={existingBookings}
           mode={{ type: 'edit', booking: editingBooking }}
@@ -1105,6 +1107,7 @@ function BookingsView({
         />
       ) : (
         <BookingForm
+          key='create'
           currentUserId={currentUser.id}
           existingBookings={existingBookings}
           mode={{ type: 'create' }}
@@ -1198,6 +1201,7 @@ function BookingForm({
   roomList: Room[];
 }) {
   const isEditMode = mode.type === 'edit';
+  const formRef = useRef<HTMLFormElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const initialBooking = isEditMode ? mode.booking : null;
   const [startDate, setStartDate] = useState(
@@ -1222,6 +1226,15 @@ function BookingForm({
       booking.startDate <= endDate &&
       booking.endDate >= startDate,
   );
+
+  useEffect(() => {
+    if (isEditMode) {
+      formRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  }, [isEditMode]);
 
   function resetAvailabilityResult() {
     setAvailabilityResult(initialAvailabilityResult);
@@ -1348,11 +1361,25 @@ function BookingForm({
   }
 
   return (
-    <form className='booking-form' onSubmit={(event) => event.preventDefault()}>
+    <form
+      ref={formRef}
+      className={
+        isEditMode ? 'booking-form booking-form-editing' : 'booking-form'
+      }
+      onSubmit={(event) => event.preventDefault()}
+    >
       <div className='form-heading'>
         <div>
           <p className='section-label'>{isEditMode ? 'Ändra' : 'Ny bokning'}</p>
           <h3>{title}</h3>
+          {isEditMode && (
+            <p>
+              Redigerar bokning för {mode.booking.user.displayName}
+              <br />
+              Nuvarande datum:{' '}
+              {formatDateRange(mode.booking.startDate, mode.booking.endDate)}
+            </p>
+          )}
         </div>
         {isEditMode && (
           <button
@@ -2071,14 +2098,4 @@ function getRoomOptions(roomList: Room[], selectedRoomIds: string[]) {
   return roomList.filter(
     (room) => room.isActive || selectedRoomIds.includes(room.id),
   );
-}
-
-function getStatusLabel(booking: BookingWithDetails) {
-  const labels = {
-    confirmed: 'Bekräftad',
-    cancelled: 'Avbokad',
-    pending: 'Väntar på godkännande',
-    rejected: 'Nekad',
-  };
-  return labels[booking.status];
 }
