@@ -49,6 +49,7 @@ import { AllowedEmailStatusMessage } from './components/status/AllowedEmailStatu
 import { BookingStatusMessage } from './components/status/BookingStatusMessage';
 import { formatDate, formatDateRange } from './utils/dateUtils';
 import { getStatusLabel } from './utils/bookingPresentation';
+import { BookingSummary } from './components/bookings/BookingSummary';
 
 type View = 'calendar' | 'bookings' | 'admin';
 
@@ -1986,18 +1987,6 @@ function DayBookingModal({
           ))}
         </div>
       </section>
-    </div>
-  );
-}
-
-function BookingSummary({ booking }: { booking: BookingWithDetails }) {
-  return (
-    <div>
-      <h3>{booking.rooms.map((room) => room.name).join(', ')}</h3>
-      <p>
-        {formatDateRange(booking.startDate, booking.endDate)} -{' '}
-        {booking.user.displayName} - {getStatusLabel(booking)}
-      </p>
     </div>
   );
 }
