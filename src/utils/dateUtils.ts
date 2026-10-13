@@ -19,3 +19,14 @@ export function formatDateRange(startDate: string, endDate: string) {
 
   return `${formatDate(startDate)} till ${formatDate(endDate)}`;
 }
+
+export function getTodayDateString() {
+  return toDateString(new Date());
+}
+function toDateString(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}

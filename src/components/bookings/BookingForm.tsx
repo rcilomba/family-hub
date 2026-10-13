@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { findConflictingBookings } from '../../utils/bookingUtils';
-import { formatDateRange } from '../../utils/dateUtils';
 import type { Booking, BookingWithDetails, Room } from '../../types/booking';
+import { formatDateRange, getTodayDateString } from '../../utils/dateUtils';
 
 type AvailabilityResult =
   | { status: 'idle'; message: string }
@@ -48,10 +48,10 @@ export function BookingForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const initialBooking = isEditMode ? mode.booking : null;
   const [startDate, setStartDate] = useState(
-    initialBooking?.startDate ?? '2026-07-19',
+    () => initialBooking?.startDate ?? getTodayDateString(),
   );
   const [endDate, setEndDate] = useState(
-    initialBooking?.endDate ?? '2026-07-21',
+    () => initialBooking?.endDate ?? getTodayDateString(),
   );
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(
     initialBooking?.roomIds ?? [],
